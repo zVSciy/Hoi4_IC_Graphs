@@ -27,7 +27,7 @@ jobs:
     name: Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Installs the toolchain pinned in rust-toolchain.toml.
       - name: Set up Rust
         run: rustup toolchain install && cargo --version
@@ -41,7 +41,7 @@ jobs:
         os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Rust
         run: rustup toolchain install && cargo --version
       - uses: Swatinem/rust-cache@v2

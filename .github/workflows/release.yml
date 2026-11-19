@@ -61,7 +61,7 @@ jobs:
       HOI4_ANALYZER_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check the tag
         run: |
@@ -168,7 +168,7 @@ jobs:
           codesign --verify --verbose "$app"
           ditto -c -k --keepParent "$app" "dist/HOI4_Analyzer-$TAG-macos-universal.zip"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: package-${{ matrix.name }}
           path: dist/*
@@ -181,7 +181,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: package-*
           path: dist
@@ -212,7 +212,7 @@ jobs:
           } > ../release-notes.md
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.TAG }}
           target_commitish: ${{ github.sha }}
