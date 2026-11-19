@@ -8,7 +8,7 @@
 //!   further, `output.txt` only ever grows) updates that game in place,
 //! * anything else becomes a new game.
 //!
-//! The database lives at `%LOCALAPPDATA%\HOI4_Analyzer\library.sqlite3` and can
+//! The database lives at `library.sqlite3` in the app data folder and can
 //! be opened with any SQLite tool; the parsed data is a compact blob (see
 //! [`codec`]).
 
@@ -194,17 +194,13 @@ pub struct Library {
 }
 
 impl Library {
-    /// `%LOCALAPPDATA%\HOI4_Analyzer\library.sqlite3` (temp dir as fallback),
+    /// `library.sqlite3` in the app's data folder ([`crate::paths::data_dir`]),
     /// or the file named by `HOI4_ANALYZER_LIBRARY` (e.g. in a synced folder).
     pub fn default_path() -> PathBuf {
         if let Some(path) = std::env::var_os("HOI4_ANALYZER_LIBRARY").filter(|p| !p.is_empty()) {
             return PathBuf::from(path);
         }
-        std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir)
-            .join("HOI4_Analyzer")
-            .join("library.sqlite3")
+        crate::paths::data_dir().join("library.sqlite3")
     }
 
     /// Opens (creating if needed) the library at `path`. Every thread that

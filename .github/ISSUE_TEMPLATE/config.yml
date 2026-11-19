@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/zVSciy/Hoi4_IC_Graphs/security/advisories/new
+    about: Please report security problems privately, not as a public issue.
+  - name: Build from source
+    url: https://github.com/zVSciy/Hoi4_IC_Graphs/blob/main/docs/BUILDING.md
+    about: Prerequisites, build steps and troubleshooting for Windows, Linux and macOS.

@@ -1,5 +1,5 @@
 //! User settings, stored as JSON next to the game library
-//! (`%LOCALAPPDATA%\HOI4_Analyzer\settings.json`).
+//! (`settings.json` in the app data folder, see [`crate::paths::data_dir`]).
 //!
 //! Every field has a default, so settings files from older versions load fine
 //! and new options simply start with their default value.
@@ -98,17 +98,13 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// `%LOCALAPPDATA%\HOI4_Analyzer\settings.json` (temp dir as fallback),
+    /// `settings.json` in the app's data folder ([`crate::paths::data_dir`]),
     /// or the file named by `HOI4_ANALYZER_SETTINGS`.
     pub fn default_path() -> PathBuf {
         if let Some(path) = std::env::var_os("HOI4_ANALYZER_SETTINGS").filter(|p| !p.is_empty()) {
             return PathBuf::from(path);
         }
-        std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(std::env::temp_dir)
-            .join("HOI4_Analyzer")
-            .join("settings.json")
+        crate::paths::data_dir().join("settings.json")
     }
 
     /// Loads settings, falling back to defaults if the file is missing or broken.

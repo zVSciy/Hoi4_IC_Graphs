@@ -11,7 +11,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 
-use crate::{data::Tag, inject};
+use crate::{countries::COUNTRY_NAMES, data::Tag, inject, paths};
 
 /// The HOI4 installation folder: from the running game if there is one,
 /// otherwise from Steam's library folders.
@@ -21,14 +21,14 @@ pub fn install_dir() -> Option<PathBuf> {
     {
         return Some(dir.to_path_buf());
     }
-    let steam = std::env::var_os("ProgramFiles(x86)")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files (x86)"))
-        .join("Steam");
-    let vdf =
-        fs::read_to_string(steam.join("steamapps").join("libraryfolders.vdf")).unwrap_or_default();
-    std::iter::once(steam)
-        .chain(steam_library_paths(&vdf))
+    paths::steam_roots()
+        .into_iter()
+        .flat_map(|steam| {
+            let vdf = fs::read_to_string(steam.join("steamapps").join("libraryfolders.vdf"))
+                .unwrap_or_default();
+            let libraries: Vec<PathBuf> = steam_library_paths(&vdf).collect();
+            std::iter::once(steam).chain(libraries)
+        })
         .map(|library| {
             library
                 .join("steamapps")
@@ -56,11 +56,36 @@ pub fn version(dir: &Path) -> Option<String> {
     (!raw.is_empty()).then(|| raw.trim_start_matches(['v', 'V']).to_owned())
 }
 
-/// Country names from the game's English localisation (` GER: "Germany"`).
-#[derive(Clone, Debug, Default)]
-pub struct CountryNames(FxHashMap<Tag, String>);
+/// Country names: the built-in table ([`crate::countries`]) first, then the
+/// game's English localisation (` GER: "Germany"`) for tags the table lacks
+/// (mod countries, dynamic tags).
+#[derive(Clone, Debug)]
+pub struct CountryNames {
+    names: FxHashMap<Tag, String>,
+    /// How many names came from the game's localisation.
+    from_game: usize,
+}
+
+impl Default for CountryNames {
+    fn default() -> Self {
+        Self::builtin()
+    }
+}
 
 impl CountryNames {
+    /// Only the built-in names.
+    pub fn builtin() -> Self {
+        let names = COUNTRY_NAMES
+            .iter()
+            .filter_map(|&(tag, name)| Some((Tag::from_bytes(tag.as_bytes())?, name.to_owned())))
+            .collect();
+        Self {
+            names,
+            from_game: 0,
+        }
+    }
+
+    /// Built-in names plus the game's names for tags without a built-in one.
     pub fn load(dir: &Path) -> Self {
         let path = dir
             .join("localisation")
@@ -68,18 +93,33 @@ impl CountryNames {
             .join("countries_l_english.yml");
         match fs::read_to_string(&path) {
             Ok(text) => {
-                let names = Self::parse(&text);
-                log::info!("Loaded {} country names from the game", names.0.len());
+                let names = Self::builtin().with_game_names(Self::parse(&text));
+                log::info!(
+                    "Using {} country names ({} from the game)",
+                    names.len(),
+                    names.from_game
+                );
                 names
             }
             Err(err) => {
-                log::warn!("Country names unavailable ({}): {err}", path.display());
-                Self::default()
+                log::warn!("Game country names unavailable ({}): {err}", path.display());
+                Self::builtin()
             }
         }
     }
 
-    fn parse(text: &str) -> Self {
+    fn with_game_names(mut self, game: FxHashMap<Tag, String>) -> Self {
+        for (tag, name) in game {
+            if let std::collections::hash_map::Entry::Vacant(slot) = self.names.entry(tag) {
+                slot.insert(name);
+                self.from_game += 1;
+            }
+        }
+        self
+    }
+
+    /// Plain `TAG: "Name"` entries of a localisation file.
+    fn parse(text: &str) -> FxHashMap<Tag, String> {
         let mut names = FxHashMap::default();
         for line in text.lines() {
             // Only plain `TAG:` keys; `GER_fascism:` etc. are ideology variants.
@@ -97,19 +137,29 @@ impl CountryNames {
                 names.insert(tag, name.to_owned());
             }
         }
-        Self(names)
+        names
     }
 
     pub fn get(&self, tag: Tag) -> Option<&str> {
-        self.0.get(&tag).map(String::as_str)
+        self.names.get(&tag).map(String::as_str)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.names.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.names.len()
+    }
+
+    /// Whether the game's localisation has been merged in.
+    pub fn has_game_names(&self) -> bool {
+        self.from_game > 0
+    }
+
+    /// How many names came from the game's localisation.
+    pub fn from_game(&self) -> usize {
+        self.from_game
     }
 }
 
@@ -239,9 +289,39 @@ mod tests {
         let text = "\u{feff}l_english:\n GER_fascism: \"German Reich\"\n GER: \"Germany\"\n \
                     ENG:0 \"Britain\"\n GER_ADJ: \"German\"\n D01: \"Dynamic\"\n";
         let names = CountryNames::parse(text);
-        assert_eq!(names.get(Tag::from_static("GER")), Some("Germany"));
-        assert_eq!(names.get(Tag::from_static("ENG")), Some("Britain"));
-        assert_eq!(names.0.len(), 2);
+        assert_eq!(
+            names.get(&Tag::from_static("GER")).map(String::as_str),
+            Some("Germany")
+        );
+        assert_eq!(
+            names.get(&Tag::from_static("ENG")).map(String::as_str),
+            Some("Britain")
+        );
+        assert_eq!(names.len(), 2);
+    }
+
+    #[test]
+    fn builtin_names_win_over_game_names() {
+        let game = CountryNames::parse(" GER: \"Germany\"\n SOV: \"Russia\"\n ZZZ: \"Modland\"\n");
+        let names = CountryNames::builtin().with_game_names(game);
+        assert_eq!(names.get(Tag::from_static("GER")), Some("German Reich"));
+        assert_eq!(names.get(Tag::from_static("SOV")), Some("Soviet Union"));
+        assert_eq!(names.get(Tag::from_static("ZZZ")), Some("Modland"));
+        assert_eq!(names.from_game(), 1);
+        assert!(names.has_game_names());
+    }
+
+    #[test]
+    fn builtin_table_is_sorted_unique_and_valid() {
+        assert!(COUNTRY_NAMES.windows(2).all(|w| w[0].0 < w[1].0));
+        for (tag, name) in COUNTRY_NAMES {
+            assert!(Tag::from_bytes(tag.as_bytes()).is_some(), "bad tag {tag}");
+            assert!(!name.trim().is_empty(), "empty name for {tag}");
+        }
+        let mut names: Vec<_> = COUNTRY_NAMES.iter().map(|(_, n)| n).collect();
+        names.sort();
+        assert!(names.windows(2).all(|w| w[0] != w[1]), "duplicate name");
+        assert_eq!(CountryNames::builtin().len(), COUNTRY_NAMES.len());
     }
 
     #[test]

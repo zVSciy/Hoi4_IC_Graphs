@@ -1,110 +1,179 @@
-# HOI4 Analyzer GUI
+<div align="center">
 
-## About the Project
+# HOI4 IC Analyzer
 
-The HOI4 Analyzer GUI is a desktop application developed to facilitate the analysis of save games or other data for the game Hearts of Iron IV.
+**Record, chart and compare the industrial capacity of every country in your Hearts of Iron IV campaigns.**
 
-## Purpose of This Repository
+[![CI](https://github.com/zVSciy/Hoi4_IC_Graphs/actions/workflows/ci.yml/badge.svg)](https://github.com/zVSciy/Hoi4_IC_Graphs/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/zVSciy/Hoi4_IC_Graphs?sort=semver)](https://github.com/zVSciy/Hoi4_IC_Graphs/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#download)
 
-This repository contains the **source code** of the HOI4 Analyzer GUI application (Rust). Ready-to-use builds are published in the separate [Hoi4GraphToolReleases](https://github.com/zVSciy/Hoi4GraphToolReleases) repository.
+**[Download](#download)** &nbsp;·&nbsp;
+**[Quick start](#quick-start)** &nbsp;·&nbsp;
+**[User guide](docs/USER_GUIDE.md)** &nbsp;·&nbsp;
+**[Build from source](docs/BUILDING.md)**
 
-## Downloading the Software
+</div>
 
-You can download the latest version of the HOI4 Analyzer GUI from the **[Releases section](https://github.com/zVSciy/Hoi4GraphToolReleases/releases)** of the releases repository.
+<br>
 
-1.  Go to the [**Releases**](https://github.com/zVSciy/Hoi4GraphToolReleases/releases) tab (or click the link above).
-2.  Find the latest release (usually the top entry).
-3.  Expand the "Assets" section for the release.
-4.  Download the executable file (e.g., `HOI4_Analyzer.exe` for Windows).
+<p align="center">
+  <img src="docs/screenshots/graph-countries.png" alt="Military IC of the major powers from 1936 to 1945" width="100%">
+</p>
 
-## How to Use the Application
+## Features
 
-### The Easy Way: Automatic Mode
+- **Fully automatic.** Start the app, start HOI4, play. Detection, data collection and the live dashboard start by themselves.
+- **Graphs per country or faction.** Daily output and running totals for military, naval and civilian IC, with smoothing and share-of-total views.
+- **Compare campaigns.** Put two files or any number of saved games side by side, optionally aligned by days since start.
+- **Rankings.** Every country on any date, ordered by output, with its share of the world total.
+- **Game library.** Every game is saved automatically, compressed and ready to reopen instantly.
+- **Export.** Interactive HTML pages, CSV for spreadsheets, or PNG images.
+- **Fast.** Written in Rust: the log of a full 1936–1945 campaign (43 MB) is parsed in about 20 ms.
 
-1. **Launch** `HOI4_Analyzer.exe` and leave it open.
-2. **Start Hearts of Iron IV** and play.
+## Download
 
-That's it. The analyzer notices the game, reads its version, picks the matching DataCollection DLL, starts data collection once the game has loaded (30 seconds by default), and opens the **Live Dashboard**. Your game is saved in the **Game Library** while you play, so nothing is lost when you close the game.
+Get the latest version from the **[Releases page](https://github.com/zVSciy/Hoi4_IC_Graphs/releases/latest)**.
 
-Every step can be switched off or adjusted in **Settings** (see below). The main window always shows whether HOI4 is running and whether a DLL exists for its version.
+| Platform | Package | Data collection |
+| --- | --- | :---: |
+| **Windows** 10 / 11 (64-bit) | `HOI4_Analyzer-<version>-windows-x64.zip` | Yes |
+| **Linux** x86-64 | `HOI4_Analyzer-<version>-linux-x64.tar.gz` | No |
+| **macOS** 11+ (Apple Silicon and Intel) | `HOI4_Analyzer-<version>-macos-universal.zip` | No |
 
-> **New HOI4 version?** If the analyzer says there is no DataCollection DLL for your game version, get the DLL for that version and add it in **Settings → DataCollection DLLs → Add DLL…**. No new app download is needed. For safety, data collection only ever starts with a DLL made for your exact game version.
+> [!NOTE]
+> Data collection loads a Windows DLL into the Windows version of HOI4, so it needs Windows.
+> On Linux and macOS the analyzer opens recorded `output.txt` files and `.hoi4game` exports;
+> everything else (graphs, rankings, library, export) works the same.
 
-### Starting Data Collection by Hand
+<details>
+<summary><b>First start on Linux and macOS</b></summary>
 
-1. Choose your Hearts of Iron IV version under **Version**.
-2. Click **Start Data Collection** while the game is running.
+<br>
 
-### Loading Data
+- **Linux:** extract the archive (`tar xzf HOI4_Analyzer-<version>-linux-x64.tar.gz`) and run
+  `./HOI4_Analyzer` in the extracted folder. Needs a recent desktop distribution with X11 or
+  Wayland and OpenGL (built on Ubuntu 24.04).
+- **macOS:** unzip and move `HOI4 Analyzer.app` to Applications. The app is not notarized, so the
+  first time, right-click it and choose **Open**.
 
-DataCollection writes `output.txt` into your **HOI4 game folder**.
-- **Browse File 1… / File 2…** opens directly in that folder.
-- You can also drag one or two files onto the window, or pass them on the command line (`HOI4_Analyzer.exe output.txt [second.txt]`).
+</details>
 
-### Viewing Graphs
+<details>
+<summary><b>Verifying a download</b></summary>
 
-1. **Choose countries:** tick the countries to chart, or use **Toggle All** per column. Countries are shown with the names from your HOI4 installation, and your choice is remembered for next time.
-2. **Open a graph:** **Individual IC** draws one line per country; the **Factions** buttons add countries up per faction (or per your own groups, see Settings). The **Compare** buttons put Data File 1 and 2 side by side.
+<br>
 
-Every graph window has a tab per value the game logs:
-- **Military IC** (military factory output)
-- **Naval IC** (dockyard output)
-- **Civilian IC** (civilian factory output; recorded by DataCollection 1.19.3 and newer, the tab is hidden for older files)
+Every release lists the SHA-256 checksum of each file in `SHA256SUMS.txt`. Compare it with:
 
-Each tab shows the daily value and the running total. In the toolbar:
-- **Smoothing** (7 to 90-day average) hides day-to-day noise in the daily values.
-- **Share %** shows each line as a percentage of all visible lines, for example the Axis vs Allies balance over time. Hide lines in the legend to compare fewer.
+```sh
+# Windows (PowerShell)
+Get-FileHash .\HOI4_Analyzer-<version>-windows-x64.zip -Algorithm SHA256
 
-Click a country in the legend to show or hide it in every tab, drag to pan, scroll to zoom and double-click to reset. Each country keeps the same colour in every graph.
+# Linux / macOS
+shasum -a 256 HOI4_Analyzer-<version>-*
+```
+
+</details>
+
+> [!TIP]
+> Antivirus programs sometimes flag tools that load a DLL into another process. The analyzer only
+> loads the DataCollection DLL into `hoi4.exe`, and all of its source code is in this repository,
+> so you can [build it yourself](docs/BUILDING.md).
+
+## Quick start
+
+1. **Unzip and start** `HOI4_Analyzer.exe`, and leave it open.
+2. **Start Hearts of Iron IV and play.** The analyzer detects the game, starts data collection
+   after it has loaded, opens the live dashboard and saves the game in the library.
+3. **Look at the results.** Tick countries in the main window and click **Individual IC** or
+   **Factions IC**, or open **Rankings** and the **Game Library**.
+
+> [!IMPORTANT]
+> **New HOI4 version?** Add the matching DataCollection DLL in
+> **Settings → DataCollection DLLs → Add DLL…**. No new app download is needed.
+
+Everything else is explained in the **[user guide](docs/USER_GUIDE.md)**.
+
+## Screenshots
+
+### Main window
+
+Load one or two data files, tick the countries to chart, and open graphs, rankings, the live
+dashboard or the game library.
+
+<p align="center">
+  <img src="docs/screenshots/main-window.png" alt="Main window with the country selection" width="100%">
+</p>
+
+### Faction graphs
+
+Each faction's share of world military IC over a whole campaign. Every graph also has a running
+total and tabs for naval and civilian IC.
+
+<p align="center">
+  <img src="docs/screenshots/graph-factions-share.png" alt="Axis, Allies and others as a share of world military IC" width="100%">
+</p>
 
 ### Rankings
 
-**Rankings** lists every country on any date, ordered by military, naval, civilian or combined output, with its share of the world total. Choose a date with the slider, show that day's value (optionally averaged over several days) or the total so far, and pick the data source: Data File 1 or 2, the live game, or games ticked in the library.
+Every country on any date, ordered by output, with its share of the world total.
 
-### Exporting Graphs
+<p align="center">
+  <img src="docs/screenshots/rankings.png" alt="Rankings of all countries by military IC on one day" width="75%">
+</p>
 
-Every graph window has export buttons:
-- **Export HTML…** saves one interactive page with all tabs. It opens in any browser and can be shared.
-- **Export CSV…** saves the raw numbers (`date, series, metric, daily, cumulative`) for Excel, LibreOffice or pandas.
-- **Save PNG…** saves an image of the current tab.
-- **Open in Browser** shows the interactive page right away.
+### Game library
 
-### Game Library: Compare Your Past Games
+Every game is saved automatically and can be reopened, compared, exported or shared.
 
-Your games are saved in the **Game Library** automatically, with nothing to do by hand:
-- every file you load as Data File 1 or 2 is stored right away,
-- while the **Live Dashboard** monitors a running game, it is saved every 30 seconds and once more when monitoring stops or the app closes.
-
-Open it with **Game Library**.
-- **Nothing is stored twice.** Saving `output.txt` again after playing further updates that game instead of creating a new entry. A new campaign becomes a new game.
-- **At a glance:** every game shows its dates, countries, the top military producer and the total military output.
-- **Name, version and notes** can be edited directly in the list. New games get the HOI4 version selected in the main window.
-- **Search and version filter** narrow the list, for example to games played on 1.19.4.
-- **Compare games:** tick two or more games, tick countries in the main window (the countries of the ticked games are added there), then press **Countries** or **Factions**. Each line is labelled with its game, e.g. `Germany (Game #3)`. Tick **Align by day since start** to compare games that began at different dates (e.g. 1936 and 1939).
-- **Actions** on a game: load it as Data File 1 or 2, **Export…** it as a `.hoi4game` file to share with friends, or delete it. **Import…** adds games others exported.
-- Games are stored already parsed and compressed, so opening an old game is instant and the original `output.txt` is not needed any more.
-
-The library is a single file, `%LOCALAPPDATA%\HOI4_Analyzer\library.sqlite3` (**Open Folder** in the library window shows it). Back it up by copying that file.
-
-### Live Dashboard
-
-The **Live Dashboard** follows `output.txt` while you play; only newly written data is read on each check, so the graphs stay current even late in a long campaign. Automatic mode opens it for you; otherwise open it and click **Start Live Monitoring**. If no countries are ticked, it shows the ten biggest producers.
+<p align="center">
+  <img src="docs/screenshots/game-library.png" alt="Game library with a saved campaign" width="100%">
+</p>
 
 ### Settings
 
-**Settings** in the main window holds every option; changes apply immediately and are remembered.
-- **HOI4 & Data Collection:** watch for the game, pick the matching DLL version, start collection automatically (and how long to wait after the game starts), open the live dashboard automatically, and where DataCollection writes its file.
-- **DataCollection DLLs:** all available versions and where each comes from (built in, added by you, or in a `DataCollection` folder next to the app). **Add DLL…** adds the DLL for a new game version; the version is read from a file name like `DataCollection_1.19.5.dll`. Added DLLs can be removed again.
-- **Game Library & Live Dashboard:** automatic saving, how often the live file is checked, and how often a running game is saved.
-- **Graphs:** country names or tags, same colour per country, default smoothing.
-- **Country Groups:** keep Axis and Allies, or define your own groups (e.g. multiplayer teams: "Team 1: GER ITA JAP"). Groups decide the columns of the main window and what the Factions buttons add up.
-- **Updates:** check for a new release on start (only a notice; nothing is downloaded automatically).
+Automatic data collection, DataCollection DLLs, the game library, graphs and country groups.
 
-### Advanced: Storage Locations
+<p align="center">
+  <img src="docs/screenshots/settings.png" alt="Settings window" width="70%">
+</p>
 
-Everything is kept in `%LOCALAPPDATA%\HOI4_Analyzer\`: `library.sqlite3` (game library), `settings.json` (settings) and `DataCollection\` (DLLs you added). To keep the library or settings elsewhere, for example in a synced folder, set the environment variable `HOI4_ANALYZER_LIBRARY` or `HOI4_ANALYZER_SETTINGS` to the full path of the file to use.
+## Building from source
 
-## Verification
+You need [Rust](https://rustup.rs) and a C compiler. The Rust version is pinned in
+`rust-toolchain.toml` and installed automatically.
 
-Each release includes a **SHA256 hash** in the release description for security verification. You can verify the integrity of the downloaded file by comparing its SHA256 hash with the one provided in the release notes.
+```sh
+git clone https://github.com/zVSciy/Hoi4_IC_Graphs.git
+cd Hoi4_IC_Graphs
+cargo run --release
+```
 
+See **[docs/BUILDING.md](docs/BUILDING.md)** for prerequisites per platform, feature flags,
+packaging and troubleshooting.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome.
+
+| Document | What's in it |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to report bugs, suggest features and open a pull request |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the code is organised |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | How we treat each other |
+| [SECURITY.md](SECURITY.md) | How to report a vulnerability privately |
+| [CHANGELOG.md](CHANGELOG.md) | What changed in each release |
+
+## License
+
+The source code is released under the [MIT License](LICENSE). The prebuilt DataCollection DLLs in
+[`DataCollection/`](DataCollection/) ship with the app so it can record data; their source code is
+not part of this repository.
+
+---
+
+<sub>A fan-made tool, not affiliated with or endorsed by Paradox Interactive. Hearts of Iron IV is a
+trademark of Paradox Interactive AB. Data collection loads a DLL into the running game; use it at
+your own risk.</sub>

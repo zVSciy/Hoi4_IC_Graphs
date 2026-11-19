@@ -229,7 +229,7 @@ impl App {
         };
         let names = game::install_dir()
             .map(|dir| CountryNames::load(&dir))
-            .unwrap_or_default();
+            .unwrap_or_else(CountryNames::builtin);
         let selected = settings
             .selected_countries
             .iter()
@@ -531,7 +531,7 @@ impl App {
             .as_deref()
             .and_then(|v| inject::match_game_version(v, &self.versions))
             .map(str::to_owned);
-        if self.names.is_empty() {
+        if !self.names.has_game_names() {
             self.names = CountryNames::load(&game.dir);
             self.selection_gen += 1;
         }
@@ -1185,7 +1185,12 @@ impl App {
                             }
                         });
                 });
-                if full(ui, !self.injecting, "Start Data Collection") {
+                // DataCollection is a Windows DLL; other platforms only analyse files.
+                if full(
+                    ui,
+                    cfg!(windows) && !self.injecting,
+                    "Start Data Collection",
+                ) {
                     self.inject(&ctx, DllKind::DataCollection, None);
                 }
                 if self.admin_menu && full(ui, !self.injecting, "Attach Admin Menu") {
@@ -1254,6 +1259,12 @@ impl App {
 
     /// One line about the running game under the HOI4 buttons.
     fn game_line(&self, ui: &mut Ui) {
+        if cfg!(not(windows)) {
+            ui.weak(
+                "Data collection needs Windows. Loading, comparing and archiving files works here.",
+            );
+            return;
+        }
         if !self.settings.watch_game {
             return;
         }
@@ -1408,6 +1419,7 @@ impl App {
                 running_version: game_version.as_deref(),
                 matched_dll: self.automation.dll.as_deref(),
                 country_names: self.names.len(),
+                game_country_names: self.names.from_game(),
             };
             let actions = window.show(
                 ctx,

@@ -2,7 +2,7 @@
 //!
 //! DLLs come from three places, in priority order:
 //! 1. DLLs added in the app's settings, kept in
-//!    `%LOCALAPPDATA%\HOI4_Analyzer\DataCollection` (new game versions without a
+//!    `DataCollection` in the app's data folder (new game versions without a
 //!    new app build),
 //! 2. a `DataCollection/` (or `AdminMenu/`) folder next to the executable,
 //! 3. zstd-compressed copies embedded at build time, extracted on demand to the
@@ -37,6 +37,8 @@ impl DllKind {
         format!("{}_{version}.dll", self.dir_name())
     }
 
+    // Only the Windows injector reports these.
+    #[cfg_attr(not(windows), allow(dead_code))]
     fn already_loaded_message(self) -> &'static str {
         match self {
             Self::DataCollection => "Data collection already running.",
@@ -44,6 +46,7 @@ impl DllKind {
         }
     }
 
+    #[cfg_attr(not(windows), allow(dead_code))]
     fn success_message(self) -> &'static str {
         match self {
             Self::DataCollection => "Data collection enabled.",
@@ -338,12 +341,9 @@ fn exe_dir() -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
-/// `%LOCALAPPDATA%\HOI4_Analyzer` (temp dir as fallback).
+/// The app's data folder, see [`crate::paths::data_dir`].
 fn local_data_dir() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir)
-        .join("HOI4_Analyzer")
+    crate::paths::data_dir()
 }
 
 fn cache_dir() -> PathBuf {

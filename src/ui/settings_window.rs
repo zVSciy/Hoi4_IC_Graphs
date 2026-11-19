@@ -18,6 +18,8 @@ pub struct GameStatus<'a> {
     pub running_version: Option<&'a str>,
     pub matched_dll: Option<&'a str>,
     pub country_names: usize,
+    /// How many of [`Self::country_names`] came from the HOI4 installation.
+    pub game_country_names: usize,
 }
 
 /// Requests for the main window.
@@ -316,13 +318,12 @@ fn library_section(ui: &mut Ui, s: &mut Settings) {
 fn graphs_section(ui: &mut Ui, s: &mut Settings, game: &GameStatus<'_>) {
     heading(ui, "Graphs");
     let names = ui.checkbox(&mut s.country_names, "Show country names instead of tags");
-    names.on_hover_text(if game.country_names > 0 {
-        format!(
-            "{} names found in your HOI4 installation",
+    names.on_hover_text(match game.game_country_names {
+        0 => format!("{} built-in country names", game.country_names),
+        from_game => format!(
+            "{} country names: built-in, plus {from_game} from your HOI4 installation              (mod and other countries without a built-in name)",
             game.country_names
-        )
-    } else {
-        "Names come from your HOI4 installation, which was not found".to_owned()
+        ),
     });
     ui.checkbox(
         &mut s.stable_colors,

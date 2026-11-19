@@ -5,6 +5,11 @@ edition = "2024"
 rust-version = "1.95"
 description = "HOI4 IC Analyzer - collects and graphs industrial capacity data from Hearts of Iron IV"
 authors = ["zVSciy"]
+license = "MIT"
+repository = "https://github.com/zVSciy/Hoi4_IC_Graphs"
+readme = "README.md"
+keywords = ["hoi4", "hearts-of-iron", "egui", "charts"]
+categories = ["games", "visualization"]
 publish = false
 build = "build.rs"
 
@@ -18,7 +23,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["embed-dlls"]
-# Bundle DataCollection/*.dll (zstd-compressed) into the executable.
+# Bundle DataCollection/*.dll (zstd-compressed) into the executable (Windows builds only).
 embed-dlls = []
 # Additionally bundle AdminMenu/*.dll. Not part of public releases.
 admin-menu = ["embed-dlls"]
@@ -55,6 +60,18 @@ windows-sys = { version = "0.61", features = [
     "Win32_System_Memory",
     "Win32_System_SystemInformation",
     "Win32_System_Threading",
+] }
+
+# Linux: X11 and Wayland windowing. Libraries are loaded at runtime (dlopen), so the
+# binary runs on X11 or Wayland desktops without extra build dependencies.
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+eframe = { version = "0.37", default-features = false, features = ["x11", "wayland"] }
+winit = { version = "0.30", default-features = false, features = [
+    "rwh_06",
+    "x11",
+    "wayland",
+    "wayland-dlopen",
+    "wayland-csd-adwaita",
 ] }
 
 [build-dependencies]

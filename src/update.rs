@@ -10,9 +10,9 @@ use serde::Deserialize;
 
 use crate::inject::version_key;
 
-pub const RELEASES_PAGE: &str = "https://github.com/zVSciy/Hoi4GraphToolReleases/releases";
+pub const RELEASES_PAGE: &str = "https://github.com/zVSciy/Hoi4_IC_Graphs/releases";
 const LATEST_RELEASE_API: &str =
-    "https://api.github.com/repos/zVSciy/Hoi4GraphToolReleases/releases/latest";
+    "https://api.github.com/repos/zVSciy/Hoi4_IC_Graphs/releases/latest";
 
 /// The release tag this build was published as, e.g. `v1.0.7`.
 pub fn current_release() -> Option<&'static str> {
