@@ -1,0 +1,23 @@
+# Rust build output
+/target/
+
+# Local tooling (not part of the project)
+/graphify-out/
+CLAUDE.md
+.claude/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Runtime output and logs
+output.txt
+*.log
+
+# Environment / secrets
+.env
+.env.*

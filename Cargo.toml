@@ -1,0 +1,85 @@
+[package]
+name = "hoi4_analyzer"
+version = "3.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "HOI4 IC Analyzer - collects and graphs industrial capacity data from Hearts of Iron IV"
+authors = ["zVSciy"]
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "HOI4_Analyzer"
+path = "src/main.rs"
+
+[lib]
+name = "hoi4_analyzer"
+path = "src/lib.rs"
+
+[features]
+default = ["embed-dlls"]
+# Bundle DataCollection/*.dll (zstd-compressed) into the executable.
+embed-dlls = []
+# Additionally bundle AdminMenu/*.dll. Not part of public releases.
+admin-menu = ["embed-dlls"]
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "persistence",
+] }
+egui_plot = "0.38"
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
+log = "0.4"
+memchr = "2.7"
+memmap2 = "0.9"
+open = "5"
+rayon = "1.10"
+rfd = "0.18"
+rusqlite = { version = "0.43", features = ["bundled"] }
+rustc-hash = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "3", default-features = false, features = ["rustls", "json"] }
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+zstd = { version = "0.14", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+] }
+
+[build-dependencies]
+zstd = { version = "0.14", default-features = false }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[dev-dependencies]
+criterion = { version = "0.8", default-features = false }
+
+[[bench]]
+name = "parse"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Keep the DLL compression in build.rs fast during development.
+[profile.dev.build-override]
+opt-level = 3
+
+[profile.release.build-override]
+opt-level = 3
