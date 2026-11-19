@@ -1,6 +1,6 @@
 //! Build script:
 //! * compresses the injectable DLLs with zstd and generates a table that embeds them
-//!   into the executable (`embed-dlls` / `admin-menu` features, Windows targets only),
+//!   into the executable (`embed-dlls` / `admin-menu` features),
 //! * embeds the application icon into the Windows executable.
 
 use std::{
@@ -46,11 +46,9 @@ fn embed_dlls() {
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let level = zstd_level();
 
-    // The DLLs only work with the Windows game, so other builds leave them out.
-    let windows = env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows");
     let mut sources = Vec::new();
     for (dir, kind, feature) in DLL_DIRS {
-        if !windows || env::var_os(feature).is_none() {
+        if env::var_os(feature).is_none() {
             continue;
         }
         let Ok(entries) = fs::read_dir(manifest_dir.join(dir)) else {
