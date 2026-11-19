@@ -11,7 +11,7 @@ use std::{
 
 use rustc_hash::FxHashMap;
 
-use crate::{countries::COUNTRY_NAMES, data::Tag, inject, paths};
+use crate::{countries::COUNTRY_NAMES, data::Tag, inject};
 
 /// The HOI4 installation folder: from the running game if there is one,
 /// otherwise from Steam's library folders.
@@ -21,14 +21,14 @@ pub fn install_dir() -> Option<PathBuf> {
     {
         return Some(dir.to_path_buf());
     }
-    paths::steam_roots()
-        .into_iter()
-        .flat_map(|steam| {
-            let vdf = fs::read_to_string(steam.join("steamapps").join("libraryfolders.vdf"))
-                .unwrap_or_default();
-            let libraries: Vec<PathBuf> = steam_library_paths(&vdf).collect();
-            std::iter::once(steam).chain(libraries)
-        })
+    let steam = std::env::var_os("ProgramFiles(x86)")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files (x86)"))
+        .join("Steam");
+    let vdf =
+        fs::read_to_string(steam.join("steamapps").join("libraryfolders.vdf")).unwrap_or_default();
+    std::iter::once(steam)
+        .chain(steam_library_paths(&vdf))
         .map(|library| {
             library
                 .join("steamapps")

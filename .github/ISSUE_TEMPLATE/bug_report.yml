@@ -29,19 +29,12 @@ body:
   - type: dropdown
     id: os
     attributes:
-      label: Operating system
+      label: Windows version
       options:
         - Windows 11
         - Windows 10
-        - Linux
-        - macOS
     validations:
       required: true
-  - type: input
-    id: os-details
-    attributes:
-      label: OS details
-      description: Distribution and desktop for Linux (e.g. Ubuntu 24.04, GNOME on Wayland), version for macOS.
   - type: input
     id: hoi4-version
     attributes:

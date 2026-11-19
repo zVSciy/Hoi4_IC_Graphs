@@ -40,8 +40,7 @@ For larger changes, please discuss the idea in an issue before writing code.
 
 5. If users will notice the change, add a line under **Unreleased** in
    [CHANGELOG.md](CHANGELOG.md), and update the [user guide](docs/USER_GUIDE.md) if behaviour changes.
-6. Open the pull request and fill in the template. CI builds and tests it on Windows, Linux and
-   macOS.
+6. Open the pull request and fill in the template. CI builds and tests it automatically.
 
 Keep pull requests focused: one fix or feature per PR is much easier to review than a mix.
 
@@ -49,8 +48,6 @@ Keep pull requests focused: one fix or feature per PR is much easier to review t
 
 - **Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first**; it shows where things live.
 - Formatting is whatever `cargo fmt` produces; Clippy warnings are errors.
-- Keep it cross-platform. Windows-only code goes behind `#[cfg(windows)]` with a fallback for
-  other platforms, and must not break the Linux or macOS build.
 - Never panic on user data. Malformed lines, missing files and unreadable settings must lead to a
   message or a sensible default.
 - The parser is performance-critical. Run `cargo bench --bench parse` before and after changing
@@ -61,7 +58,7 @@ Keep pull requests focused: one fix or feature per PR is much easier to review t
 ## Commit messages
 
 Write the subject in the imperative mood, at most about 72 characters, for example
-`Fix rankings order for equal values` or `Add Linux data folder`. Explain the *why* in the body
+`Fix rankings order for equal values` or `Add Bulgarian country names`. Explain the *why* in the body
 when it isn't obvious.
 
 ## Common contributions

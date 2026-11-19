@@ -18,34 +18,29 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  fmt:
-    name: Formatting
-    runs-on: ubuntu-latest
+  check:
+    name: Format, Clippy and tests
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
+
       # Installs the toolchain pinned in rust-toolchain.toml.
       - name: Set up Rust
-        run: rustup toolchain install && cargo --version
-      - run: cargo fmt --check
+        run: |
+          rustup toolchain install
+          cargo --version
 
-  check:
-    name: Clippy and tests (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Rust
-        run: rustup toolchain install && cargo --version
       - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --check
+
       - name: Clippy
         run: cargo clippy --locked --all-targets -- -D warnings
+
       - name: Tests
         run: cargo test --locked

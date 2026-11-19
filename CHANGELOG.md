@@ -8,23 +8,19 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
-- Linux and macOS builds. Loading, graphs, comparisons, rankings, the game library and the live
-  dashboard work on all platforms; collecting data from a running game stays Windows-only.
 - Built-in English names for 328 country tags, so names show without HOI4 installed and are the
   same on every machine. Germany is shown as *German Reich* and the Soviet Union as
   *Soviet Union*. Countries without a built-in name (for example from mods) still use the
   game's localisation.
 - Public source code under the MIT License, with documentation (build guide, architecture,
-  contributing guide, security policy) and CI on Windows, Linux and macOS.
+  contributing guide, security policy) and CI for every push and pull request.
 
 ### Changed
 
 - Releases are now published in this repository. The in-app update check and the **Releases**
   link follow. The old `Hoi4GraphToolReleases` repository receives no new releases.
-- Release packages: `HOI4_Analyzer-<version>-windows-x64.zip`, `-linux-x64.tar.gz` and
-  `-macos-universal.zip`, with checksums in `SHA256SUMS.txt`.
-- On Linux and macOS, settings and the game library are stored in the platform's data folder
-  instead of the temporary folder.
+- Release package renamed to `HOI4_Analyzer-<version>-windows-x64.zip`, with checksums in
+  `SHA256SUMS.txt`.
 
 ## [3.1.0]
 

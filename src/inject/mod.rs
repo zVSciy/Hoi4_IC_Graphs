@@ -37,8 +37,6 @@ impl DllKind {
         format!("{}_{version}.dll", self.dir_name())
     }
 
-    // Only the Windows injector reports these.
-    #[cfg_attr(not(windows), allow(dead_code))]
     fn already_loaded_message(self) -> &'static str {
         match self {
             Self::DataCollection => "Data collection already running.",
@@ -46,7 +44,6 @@ impl DllKind {
         }
     }
 
-    #[cfg_attr(not(windows), allow(dead_code))]
     fn success_message(self) -> &'static str {
         match self {
             Self::DataCollection => "Data collection enabled.",

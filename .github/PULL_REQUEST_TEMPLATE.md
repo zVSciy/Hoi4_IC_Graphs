@@ -9,6 +9,5 @@
 ## Checklist
 
 - [ ] `cargo fmt`, `cargo clippy --locked --all-targets -- -D warnings` and `cargo test --locked` pass
-- [ ] Windows-only code is behind `#[cfg(windows)]` and the other platforms still build
 - [ ] User-visible changes are listed under **Unreleased** in `CHANGELOG.md`
 - [ ] `docs/USER_GUIDE.md` is updated if behaviour changed

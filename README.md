@@ -7,7 +7,7 @@
 [![CI](https://github.com/zVSciy/Hoi4_IC_Graphs/actions/workflows/ci.yml/badge.svg)](https://github.com/zVSciy/Hoi4_IC_Graphs/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/zVSciy/Hoi4_IC_Graphs?sort=semver)](https://github.com/zVSciy/Hoi4_IC_Graphs/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](#download)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6)](#download)
 
 **[Download](#download)** &nbsp;·&nbsp;
 **[Quick start](#quick-start)** &nbsp;·&nbsp;
@@ -34,31 +34,12 @@
 
 ## Download
 
-Get the latest version from the **[Releases page](https://github.com/zVSciy/Hoi4_IC_Graphs/releases/latest)**.
+Download `HOI4_Analyzer-<version>-windows-x64.zip` from the
+**[Releases page](https://github.com/zVSciy/Hoi4_IC_Graphs/releases/latest)**, unzip it anywhere and
+run `HOI4_Analyzer.exe`. No installation is needed.
 
-| Platform | Package | Data collection |
-| --- | --- | :---: |
-| **Windows** 10 / 11 (64-bit) | `HOI4_Analyzer-<version>-windows-x64.zip` | Yes |
-| **Linux** x86-64 | `HOI4_Analyzer-<version>-linux-x64.tar.gz` | No |
-| **macOS** 11+ (Apple Silicon and Intel) | `HOI4_Analyzer-<version>-macos-universal.zip` | No |
-
-> [!NOTE]
-> Data collection loads a Windows DLL into the Windows version of HOI4, so it needs Windows.
-> On Linux and macOS the analyzer opens recorded `output.txt` files and `.hoi4game` exports;
-> everything else (graphs, rankings, library, export) works the same.
-
-<details>
-<summary><b>First start on Linux and macOS</b></summary>
-
-<br>
-
-- **Linux:** extract the archive (`tar xzf HOI4_Analyzer-<version>-linux-x64.tar.gz`) and run
-  `./HOI4_Analyzer` in the extracted folder. Needs a recent desktop distribution with X11 or
-  Wayland and OpenGL (built on Ubuntu 24.04).
-- **macOS:** unzip and move `HOI4 Analyzer.app` to Applications. The app is not notarized, so the
-  first time, right-click it and choose **Open**.
-
-</details>
+- **System:** Windows 10 or 11, 64-bit
+- **Game:** Hearts of Iron IV, any version with a matching DataCollection DLL
 
 <details>
 <summary><b>Verifying a download</b></summary>
@@ -67,12 +48,8 @@ Get the latest version from the **[Releases page](https://github.com/zVSciy/Hoi4
 
 Every release lists the SHA-256 checksum of each file in `SHA256SUMS.txt`. Compare it with:
 
-```sh
-# Windows (PowerShell)
+```powershell
 Get-FileHash .\HOI4_Analyzer-<version>-windows-x64.zip -Algorithm SHA256
-
-# Linux / macOS
-shasum -a 256 HOI4_Analyzer-<version>-*
 ```
 
 </details>
@@ -142,17 +119,17 @@ Automatic data collection, DataCollection DLLs, the game library, graphs and cou
 
 ## Building from source
 
-You need [Rust](https://rustup.rs) and a C compiler. The Rust version is pinned in
-`rust-toolchain.toml` and installed automatically.
+You need [Rust](https://rustup.rs) and the Visual Studio C++ build tools. The Rust version is
+pinned in `rust-toolchain.toml` and installed automatically.
 
-```sh
+```powershell
 git clone https://github.com/zVSciy/Hoi4_IC_Graphs.git
 cd Hoi4_IC_Graphs
 cargo run --release
 ```
 
-See **[docs/BUILDING.md](docs/BUILDING.md)** for prerequisites per platform, feature flags,
-packaging and troubleshooting.
+See **[docs/BUILDING.md](docs/BUILDING.md)** for prerequisites, feature flags, packaging and
+troubleshooting.
 
 ## Contributing
 

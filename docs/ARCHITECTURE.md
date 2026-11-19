@@ -49,7 +49,7 @@ A map of the code for contributors. Each module also starts with a doc comment
 | `library` | SQLite game library and its binary `codec`. |
 | `live` | Incremental reading of a growing file. |
 | `logging` | Logger for stderr and the in-app log viewer. |
-| `paths` | Per-platform data folder and Steam folders. |
+| `paths` | The app's data folder (`%LOCALAPPDATA%\HOI4_Analyzer`). |
 | `settings` | User settings, stored as JSON. |
 | `theme` | Colours shared by the native UI and the HTML export. |
 | `ui` | Windows: `app` (main window), `graph_window`, `chart_panel`/`chart`, `live_dashboard`, `rankings_window`, `library_window`, `settings_window`, `dialogs`, `style`. |
@@ -65,21 +65,17 @@ A map of the code for contributors. Each module also starts with a doc comment
 
 ## Platform-specific code
 
-Everything Windows-only is behind `#[cfg(windows)]`:
+The analyzer targets Windows only. Direct Win32 calls are kept in a few places, behind
+`#[cfg(windows)]`:
 
-- `inject::win` (process enumeration and injection) and the Windows branches of
-  `inject::running_game` / `inject::inject`. On other platforms these report that injection is
-  unsupported, and the UI disables **Start Data Collection**.
-- `logging` uses `GetLocalTime` for timestamps on Windows.
-- `paths` picks `%LOCALAPPDATA%`, `~/Library/Application Support` or `$XDG_DATA_HOME`.
-
-Linux windowing (X11 and Wayland) is enabled through target-specific dependencies in
-`Cargo.toml`. The Wayland, X11, `libxkbcommon` and EGL libraries are loaded at runtime, so the
-build needs no system development packages.
+- `inject::win`: process enumeration and `LoadLibraryW` injection, used by
+  `inject::running_game` and `inject::inject`.
+- `logging`: `GetLocalTime` for log timestamps.
+- `build.rs`: icon and version resource of the executable (`winresource`).
 
 ## Conventions
 
-- `cargo fmt` formatting, `cargo clippy --all-targets -- -D warnings` clean on all three platforms.
+- `cargo fmt` formatting, `cargo clippy --all-targets -- -D warnings` clean.
 - Unit tests live next to the code (`#[cfg(test)] mod tests`).
 - No panics on user data: malformed lines are counted and skipped, unreadable files produce a
   message in the UI.

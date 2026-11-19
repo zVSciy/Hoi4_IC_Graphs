@@ -1,8 +1,8 @@
 name: Release
 
-# Builds Windows, Linux and macOS packages and publishes them as a GitHub release
-# in this repository. Start it by pushing a version tag (git tag v3.2.0 && git push
-# origin v3.2.0) or by hand from the Actions tab with a tag name.
+# Builds the Windows package and publishes it as a GitHub release in this repository.
+# Start it by pushing a version tag (git tag v3.2.0 && git push origin v3.2.0) or by
+# hand from the Actions tab with a tag name.
 
 on:
   push:
@@ -28,188 +28,83 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-
-defaults:
-  run:
-    shell: bash
+  EXE_NAME: HOI4_Analyzer.exe
 
 jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/ci.yml
 
-  build:
-    name: Build (${{ matrix.name }})
+  release:
+    name: Build and publish
     needs: checks
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - name: windows-x64
-            os: windows-latest
-            targets: x86_64-pc-windows-msvc
-          # The oldest supported Ubuntu sets the minimum glibc version of the Linux binary.
-          - name: linux-x64
-            os: ubuntu-24.04
-            targets: x86_64-unknown-linux-gnu
-          - name: macos-universal
-            os: macos-latest
-            targets: aarch64-apple-darwin x86_64-apple-darwin
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
     env:
       # Baked into the binary so the app can tell when a newer release exists.
       HOI4_ANALYZER_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-      MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v4
 
       - name: Check the tag
         run: |
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::Release tags look like v1.2.3 or v1.2.3-beta.1, got '$TAG'"
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            Write-Output "::error::Release tags look like v1.2.3 or v1.2.3-beta.1, got '$env:TAG'"
             exit 1
-          fi
-          crate_version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
-          if [[ "${TAG#v}" != "$crate_version" ]]; then
-            echo "::warning::Tag $TAG does not match version $crate_version in Cargo.toml"
-          fi
+          }
+          $crateVersion = (Select-String -Path Cargo.toml -Pattern '^version = "(.*)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ($env:TAG.Substring(1) -ne $crateVersion) {
+            Write-Output "::warning::Tag $env:TAG does not match version $crateVersion in Cargo.toml"
+          }
 
+      # Installs the toolchain pinned in rust-toolchain.toml.
       - name: Set up Rust
         run: |
           rustup toolchain install
-          rustup target add ${{ matrix.targets }}
           cargo --version
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.name }}
 
-      - name: Build
-        run: |
-          for target in ${{ matrix.targets }}; do
-            cargo build --release --locked --target "$target"
-          done
+      # DataCollection/*.dll are compressed and embedded into the executable by build.rs.
+      - name: Build executable
+        run: cargo build --release --locked
 
       - name: Sign executable (self-signed)
-        if: runner.os == 'Windows'
-        shell: pwsh
         run: |
-          $exe = "target/x86_64-pc-windows-msvc/release/HOI4_Analyzer.exe"
           $cert = New-SelfSignedCertificate -Subject "CN=zVSciy" -Type CodeSigning -KeyUsage DigitalSignature -FriendlyName "HOI4 Analyzer Code Signing" -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddYears(1)
-          $result = Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -TimestampServer "http://timestamp.comodoca.com"
+          $result = Set-AuthenticodeSignature -FilePath "target/release/$env:EXE_NAME" -Certificate $cert -TimestampServer "http://timestamp.comodoca.com"
           if (-not $result.SignerCertificate) { throw "Signing failed: $($result.StatusMessage)" }
           Write-Output "Executable signed (status: $($result.Status))"
 
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Package
         run: |
           New-Item -ItemType Directory -Force -Path dist, package | Out-Null
-          Copy-Item target/x86_64-pc-windows-msvc/release/HOI4_Analyzer.exe, README.md, LICENSE package/
+          Copy-Item "target/release/$env:EXE_NAME", README.md, LICENSE package/
           Compress-Archive -Path package/* -DestinationPath "dist/HOI4_Analyzer-$env:TAG-windows-x64.zip"
-
-      - name: Package (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          mkdir -p dist "package/HOI4_Analyzer-$TAG"
-          cp target/x86_64-unknown-linux-gnu/release/HOI4_Analyzer README.md LICENSE "package/HOI4_Analyzer-$TAG/"
-          tar -C package -czf "dist/HOI4_Analyzer-$TAG-linux-x64.tar.gz" "HOI4_Analyzer-$TAG"
-
-      - name: Package (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          app="HOI4 Analyzer.app"
-          mkdir -p dist "$app/Contents/MacOS" "$app/Contents/Resources"
-          lipo -create -output "$app/Contents/MacOS/HOI4_Analyzer" \
-            target/aarch64-apple-darwin/release/HOI4_Analyzer \
-            target/x86_64-apple-darwin/release/HOI4_Analyzer
-          lipo -info "$app/Contents/MacOS/HOI4_Analyzer"
-
-          # App icon: ICO -> PNG -> ICNS. A missing icon must not fail the release.
-          make_icon() {
-            sips -s format png assets/cover.thumb256.ico --out icon.png >/dev/null
-            mkdir -p icon.iconset
-            for size in 16 32 128 256; do
-              sips -z "$size" "$size" icon.png --out "icon.iconset/icon_${size}x${size}.png" >/dev/null
-              if [ $((size * 2)) -le 256 ]; then
-                sips -z $((size * 2)) $((size * 2)) icon.png --out "icon.iconset/icon_${size}x${size}@2x.png" >/dev/null
-              fi
-            done
-            iconutil -c icns icon.iconset -o "$app/Contents/Resources/AppIcon.icns"
-          }
-          if ! make_icon; then
-            echo "::warning::Could not convert the app icon; the bundle uses the default icon"
-          fi
-
-          version="${TAG#v}"
-          cat > "$app/Contents/Info.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleName</key><string>HOI4 Analyzer</string>
-            <key>CFBundleDisplayName</key><string>HOI4 IC Analyzer</string>
-            <key>CFBundleIdentifier</key><string>io.github.zvsciy.hoi4analyzer</string>
-            <key>CFBundleExecutable</key><string>HOI4_Analyzer</string>
-            <key>CFBundleIconFile</key><string>AppIcon</string>
-            <key>CFBundlePackageType</key><string>APPL</string>
-            <key>CFBundleShortVersionString</key><string>${version}</string>
-            <key>CFBundleVersion</key><string>${version}</string>
-            <key>LSMinimumSystemVersion</key><string>11.0</string>
-            <key>NSHighResolutionCapable</key><true/>
-          </dict>
-          </plist>
-          EOF
-          plutil -lint "$app/Contents/Info.plist"
-
-          cp LICENSE README.md "$app/Contents/Resources/"
-          # Ad-hoc signature so the universal binary runs on Apple Silicon (not notarized).
-          codesign --force --deep --sign - "$app"
-          codesign --verify --verbose "$app"
-          ditto -c -k --keepParent "$app" "dist/HOI4_Analyzer-$TAG-macos-universal.zip"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: package-${{ matrix.name }}
-          path: dist/*
-          if-no-files-found: error
-
-  publish:
-    name: Publish release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: package-*
-          path: dist
-          merge-multiple: true
 
       - name: Checksums and release notes
         run: |
-          cd dist
-          sha256sum -- * > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-          {
-            echo "## Downloads"
-            echo
-            echo "| Platform | File |"
-            echo "| --- | --- |"
-            echo "| Windows 10/11 (64-bit) | \`HOI4_Analyzer-$TAG-windows-x64.zip\` |"
-            echo "| Linux (x86-64) | \`HOI4_Analyzer-$TAG-linux-x64.tar.gz\` |"
-            echo "| macOS 11+ (Apple Silicon and Intel) | \`HOI4_Analyzer-$TAG-macos-universal.zip\` |"
-            echo
-            echo "Data collection from a running game needs Windows; Linux and macOS analyse recorded files."
-            echo "The macOS app is not notarized: right-click it and choose **Open** the first time."
-            echo
-            echo "### SHA-256 checksums"
-            echo
-            echo '```'
-            cat SHA256SUMS.txt
-            echo '```'
-          } > ../release-notes.md
+          $lines = Get-ChildItem dist | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          }
+          $lines | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          $lines
+          $notes = @(
+            "## Download"
+            ""
+            "**``HOI4_Analyzer-$env:TAG-windows-x64.zip``**: unzip it and run ``HOI4_Analyzer.exe`` (Windows 10/11, 64-bit)."
+            ""
+            "### SHA-256 checksums"
+            ""
+            '```'
+            $lines
+            '```'
+          )
+          $notes | Set-Content -Encoding utf8 release-notes.md
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2

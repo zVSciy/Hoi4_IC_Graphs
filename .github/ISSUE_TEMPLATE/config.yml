@@ -5,4 +5,4 @@ contact_links:
     about: Please report security problems privately, not as a public issue.
   - name: Build from source
     url: https://github.com/zVSciy/Hoi4_IC_Graphs/blob/main/docs/BUILDING.md
-    about: Prerequisites, build steps and troubleshooting for Windows, Linux and macOS.
+    about: Prerequisites, build steps and troubleshooting.

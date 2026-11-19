@@ -19,8 +19,6 @@ Everything HOI4 IC Analyzer can do, from the first start to comparing past campa
 
 ## 1. Automatic mode
 
-*Windows only.*
-
 1. **Launch** `HOI4_Analyzer.exe` and leave it open.
 2. **Start Hearts of Iron IV** and play.
 
@@ -175,13 +173,8 @@ check, so the graphs stay current even late in a long campaign.
 
 ## 10. Storage locations
 
-Settings, the game library and DLLs you added are kept in the app's data folder:
-
-| Platform | Data folder |
-| --- | --- |
-| Windows | `%LOCALAPPDATA%\HOI4_Analyzer\` |
-| Linux | `$XDG_DATA_HOME/HOI4_Analyzer/`, usually `~/.local/share/HOI4_Analyzer/` |
-| macOS | `~/Library/Application Support/HOI4_Analyzer/` |
+Settings, the game library and DLLs you added are kept in the app's data folder,
+`%LOCALAPPDATA%\HOI4_Analyzer\`:
 
 | File | Contents |
 | --- | --- |

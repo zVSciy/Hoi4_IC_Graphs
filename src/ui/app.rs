@@ -1185,12 +1185,7 @@ impl App {
                             }
                         });
                 });
-                // DataCollection is a Windows DLL; other platforms only analyse files.
-                if full(
-                    ui,
-                    cfg!(windows) && !self.injecting,
-                    "Start Data Collection",
-                ) {
+                if full(ui, !self.injecting, "Start Data Collection") {
                     self.inject(&ctx, DllKind::DataCollection, None);
                 }
                 if self.admin_menu && full(ui, !self.injecting, "Attach Admin Menu") {
@@ -1259,12 +1254,6 @@ impl App {
 
     /// One line about the running game under the HOI4 buttons.
     fn game_line(&self, ui: &mut Ui) {
-        if cfg!(not(windows)) {
-            ui.weak(
-                "Data collection needs Windows. Loading, comparing and archiving files works here.",
-            );
-            return;
-        }
         if !self.settings.watch_game {
             return;
         }
