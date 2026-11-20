@@ -2,10 +2,7 @@
 
 ## Our pledge
 
-We want HOI4 IC Analyzer to be a friendly, welcoming project for everyone, regardless of age,
-body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and
-expression, level of experience, education, socio-economic status, nationality, personal
-appearance, race, religion, or sexual identity and orientation.
+We want HOI4 IC Analyzer to be a friendly, welcoming project for everyone.
 
 Hearts of Iron IV is a game about the Second World War. Discussing its history and mechanics is
 on topic. Promoting or glorifying the ideologies, regimes and crimes of that era is not.
