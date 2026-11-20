@@ -1,0 +1,9 @@
+---
+// "View in graph" button that filters the graph to files under a path prefix.
+import { url } from '../site';
+interface Props {
+  files: string;
+}
+const { files } = Astro.props;
+---
+<p><a class="btn btn-sm" href={url(`/graph/?files=${encodeURIComponent(files)}`)}>◉ View <code>{files}</code> in the graph</a></p>

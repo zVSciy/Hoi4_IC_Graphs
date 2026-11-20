@@ -1,0 +1,17 @@
+{
+  "name": "hoi4-ic-analyzer-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "sync-graph": "node scripts/sync-graph.mjs"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^8.1.6",
+    "3d-force-graph": "^1.80.2",
+    "astro": "^7.4.13",
+    "force-graph": "^1.52.0"
+  }
+}

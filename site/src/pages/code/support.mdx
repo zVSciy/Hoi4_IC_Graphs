@@ -1,0 +1,59 @@
+---
+layout: ../../layouts/Docs.astro
+title: support modules
+description: main, settings, paths, theme, logging and update.
+---
+import Src from '../../components/Src.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# Support modules
+
+Small modules that the rest of the app leans on.
+
+<GraphLink files="src/" />
+
+## `main.rs`: the entry point
+
+<Src file="src/main.rs">src/main.rs</Src> is about 30 lines. It initialises logging, installs a panic hook that shows the
+crash in a message box (release builds have no console and abort on panic), collects files from the command line and calls
+`ui::run`. If the UI cannot start, the user gets an error dialog instead of a silent exit.
+
+## `settings`
+
+<Src file="src/settings.rs" line={24}>Settings</Src> is one struct, serialised as JSON to `settings.json` in the app data
+folder. Every field has a default, so a settings file from an older version loads fine and new options start at their
+default. It covers:
+
+- game integration: watch for the game, pick the DLL version automatically, inject automatically after a delay, start
+  live monitoring;
+- the output file location, live poll interval and library save interval;
+- graph options: country names, stable colours, default smoothing;
+- custom country groups, update checks and the last selection.
+
+<Src file="src/settings.rs" line={111}>Settings::load</Src> falls back to defaults on any error;
+<Src file="src/settings.rs" line={124}>Settings::save</Src> writes the file.
+
+## `paths`
+
+<Src file="src/paths.rs" line={7}>data_dir</Src> returns the per-user folder `%LOCALAPPDATA%\HOI4_Analyzer`. It holds the
+library, settings, user-added DLLs and the DLL cache. The environment variables `HOI4_ANALYZER_SETTINGS` and
+`HOI4_ANALYZER_LIBRARY` can point settings and library elsewhere, e.g. to a synced folder.
+
+## `theme`
+
+<Src file="src/theme.rs">src/theme.rs</Src> defines the colours once, as RGB triples: background, foreground, accent and a
+20-colour <Src file="src/theme.rs" line={15}>PALETTE</Src> for series. The native UI (`ui::style`) and the HTML export
+(<Src file="src/theme.rs" line={42}>css</Src>) both read from it.
+
+## `logging`
+
+<Src file="src/logging.rs" line={20}>logging::init</Src> installs a logger that writes to stderr and keeps the most recent
+lines in memory (<Src file="src/logging.rs" line={30}>lines</Src>) for the in-app Log Viewer. Bug reports ask for these lines.
+
+## `update`
+
+<Src file="src/update.rs" line={35}>update::check</Src> asks the GitHub API for the latest release and compares tags
+numerically with <Src file="src/update.rs" line={66}>is_newer</Src>. Only release builds check:
+<Src file="src/update.rs" line={18}>current_release</Src> reads the `HOI4_ANALYZER_RELEASE` variable that the
+[release workflow](../build-and-release/) sets at build time, and development builds have none. A newer release only shows
+a notice with a link; nothing is downloaded automatically.

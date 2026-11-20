@@ -1,0 +1,57 @@
+---
+layout: ../../layouts/Docs.astro
+title: analysis
+description: Turning datasets into daily and cumulative series per country or group.
+---
+import Src from '../../components/Src.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `analysis`: from datasets to series
+
+`src/analysis/` sits between the data and the charts. It takes one or more `Dataset`s and a list of groups and produces
+`GraphData`: for each metric, a list of series with daily and cumulative values on a shared date axis.
+
+<GraphLink files="src/analysis/" />
+
+## Core types
+
+| Type | Meaning |
+| --- | --- |
+| <Src file="src/analysis/mod.rs" line={9}>Group</Src> | A named set of country tags, one country or a whole faction. |
+| <Src file="src/analysis/mod.rs" line={39}>Source</Src> | A dataset plus a suffix for series names (e.g. " (File 2)"). |
+| <Src file="src/analysis/mod.rs" line={45}>Series</Src> | One line on the chart: name, daily values, cumulative values, colour. |
+| <Src file="src/analysis/mod.rs" line={56}>GraphData</Src> | The shared date axis and the series for every metric. |
+| <Src file="src/analysis/mod.rs" line={28}>Align</Src> | Line up several sources by calendar date or by days since each game's start. |
+
+## Building series
+
+<Src file="src/analysis/mod.rs" line={108}>build_aligned</Src> does the work
+(<Src file="src/analysis/mod.rs" line={103}>build</Src> is the calendar-aligned shortcut):
+
+1. Each source gets an axis: its own dates, or with `Align::FromStart` the offset from its first date. That is how two
+   campaigns starting in different years can be compared day by day.
+2. The axes are merged into one sorted axis, and each source gets a column map onto it.
+3. For every group and source, the rows of the group's countries are summed per metric.
+4. Series with no positive value in any metric are dropped; cumulative values are a running sum of the daily ones.
+
+Two helpers shape what the charts show:
+
+- <Src file="src/analysis/mod.rs" line={212}>rolling_mean</Src>: the trailing N-day average behind the "smoothing" option.
+- <Src file="src/analysis/mod.rs" line={230}>shares</Src>: each series as a percentage of the visible total, day by day,
+  behind the "Share %" view.
+
+## Groups, names and colours
+
+<Src file="src/analysis/factions.rs">factions.rs</Src> decides who belongs together and what things are called.
+
+- <Src file="src/analysis/factions.rs" line={37}>Grouping</Src> is either the built-in Axis / Allies split
+  (<Src file="src/analysis/factions.rs" line={8}>AXIS</Src>, <Src file="src/analysis/factions.rs" line={11}>ALLIES</Src>) or
+  user-defined groups from settings (<Src file="src/analysis/factions.rs" line={60}>Grouping::custom</Src>), e.g.
+  multiplayer teams. Countries in no group go under "Other".
+- Groups decide the columns of the main window's country picker and what the "Factions" graphs add up
+  (<Src file="src/analysis/factions.rs" line={119}>groups_for</Src>).
+- <Src file="src/analysis/factions.rs" line={152}>parse_tags</Src> reads tag lists typed by the user (`GER ITA JAP`).
+- <Src file="src/analysis/factions.rs" line={189}>Labels</Src> turns a tag into a display name such as "German Reich", using
+  the [country names](../game-and-countries/).
+- <Src file="src/analysis/factions.rs" line={220}>stable_color</Src> derives a palette index from the tag itself, so a
+  country keeps the same colour in every graph.

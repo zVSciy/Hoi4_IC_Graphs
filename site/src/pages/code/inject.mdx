@@ -1,0 +1,67 @@
+---
+layout: ../../layouts/Docs.astro
+title: inject
+description: How the app finds HOI4 and loads the DataCollection DLL into it.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `inject`: getting data out of the game
+
+HOI4 has no API for industrial capacity. The data comes from the **DataCollection DLL**, a small library that runs inside
+`hoi4.exe` and writes one line per country per day to `output.txt`. `src/inject/` keeps the catalogue of available DLLs,
+picks the right one for the running game and loads it into the game process.
+
+<GraphLink files="src/inject/" />
+
+## Files
+
+| File | What it does |
+| --- | --- |
+| <Src file="src/inject/mod.rs">mod.rs</Src> | DLL catalogue, version matching, extraction and the `inject` entry point. |
+| <Src file="src/inject/embedded.rs">embedded.rs</Src> | The DLLs compiled into the executable by `build.rs`. |
+| <Src file="src/inject/win.rs">win.rs</Src> | The Win32 code: process lookup, module check, `LoadLibraryW` injection. |
+
+## Where DLLs come from
+
+A DLL is built for one exact game version. They are found in three places, in priority order
+(<Src file="src/inject/mod.rs" line={89}>DllSource</Src>, <Src file="src/inject/mod.rs" line={116}>catalog</Src>):
+
+1. **Added by the user** in Settings, copied into the app's data folder by
+   <Src file="src/inject/mod.rs" line={192}>add_dll</Src>. This is how a new HOI4 version is supported without a new
+   app build. `add_dll` checks that the file really is a 64-bit Windows DLL first.
+2. **Next to the executable**, in a `DataCollection/` folder.
+3. **Embedded** in the executable, zstd-compressed at build time, see <Src file="src/inject/embedded.rs" line={23}>embedded::find</Src>.
+
+<Src file="src/inject/mod.rs" line={299}>resolve_dll</Src> checks the folders first and otherwise extracts the embedded copy
+to a cache folder. It writes to a `.partial` file and renames it, so a crash never leaves a truncated DLL behind.
+
+## Matching the game version
+
+<Src file="src/inject/mod.rs" line={163}>match_game_version</Src> picks the DLL for the version the launcher reports.
+Trailing zeros are ignored (`1.18.1` matches a `1.18.1.0` DLL), and a hotfix DLL (`1.19.0` → `1.19.0.1`) is used only if
+it is the only candidate.
+
+<Note title="Why it never guesses">
+A DLL built for another game version can crash the game. If there is no match, no DLL is picked automatically;
+the user can add the right one in Settings.
+</Note>
+
+<Src file="src/inject/mod.rs" line={366}>version_key</Src> turns `"1.17.4.1"` into `[1, 17, 4, 1]` for numeric sorting.
+
+## Injecting
+
+<Src file="src/inject/mod.rs" line={267}>inject</Src> runs these steps:
+
+1. find the process ID of `hoi4.exe` (<Src file="src/inject/win.rs" line={95}>win::find_process</Src>);
+2. skip if the DLL is already loaded (<Src file="src/inject/win.rs" line={115}>win::is_module_loaded</Src>);
+3. resolve the DLL on disk or extract it;
+4. load it into the game with <Src file="src/inject/win.rs" line={149}>win::inject_library</Src>, which uses the standard
+   `LoadLibraryW` remote-thread technique.
+
+Errors are typed (<Src file="src/inject/mod.rs" line={56}>InjectError</Src>: process not found, DLL missing, load failed …)
+and each one carries a message that tells the user what to do. On non-Windows targets `inject` returns `Unsupported`.
+
+The same code also handles the maintainer-only **AdminMenu** DLL (<Src file="src/inject/mod.rs" line={23}>DllKind</Src>),
+which is only built with the `admin-menu` Cargo feature.

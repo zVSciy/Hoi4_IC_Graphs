@@ -1,0 +1,84 @@
+---
+import Base from '../layouts/Base.astro';
+import { url, REPO, RELEASES, TOUR, GRAPH_META } from '../site';
+
+const features = [
+  ['Fully automatic', 'Start the app, start HOI4, play. Detection, data collection and the live dashboard start by themselves.'],
+  ['Graphs per country or faction', 'Daily output and running totals for military, naval and civilian IC, with smoothing and share-of-total views.'],
+  ['Compare campaigns', 'Two files or any number of saved games side by side, optionally aligned by days since start.'],
+  ['Rankings', 'Every country on any date, ordered by output, with its share of the world total.'],
+  ['Game library', 'Every game is saved automatically, compressed and ready to reopen instantly.'],
+  ['Fast', 'Written in Rust: the log of a full 1936–1945 campaign (43 MB) is parsed in about 20 ms.'],
+];
+const shots = [
+  ['main-window.png', 'Main window: data files, country picker, analysis and tools'],
+  ['graph-factions-share.png', 'Combined groups as a share of world military IC'],
+  ['rankings.png', 'Rankings on any date, with share bars'],
+  ['game-library.png', 'Game library: every campaign saved and comparable'],
+];
+---
+<Base title="HOI4 IC Analyzer" active="home">
+  <section class="hero">
+    <h1>HOI4 IC Analyzer</h1>
+    <p>Record, chart and compare the industrial capacity of every country in your Hearts of Iron IV campaigns. This site explains how the code works.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href={RELEASES}>Download for Windows</a>
+      <a class="btn" href={url('/architecture/')}>How it works</a>
+      <a class="btn" href={url('/graph/')}>Explore the code graph</a>
+      <a class="btn" href={REPO}>View on GitHub</a>
+    </div>
+  </section>
+
+  <div class="hero-shot">
+    <img src={url('/screenshots/graph-countries.png')} alt="Military IC of the major powers from 1936 to 1945" />
+  </div>
+
+  <section class="section">
+    <h2>What it does</h2>
+    <div class="features">
+      {features.map(([t, d]) => <div class="feature"><b>{t}</b><span>{d}</span></div>)}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Tour the source code</h2>
+    <p style="color:var(--fg-muted);margin-top:0">
+      About 9,500 lines of Rust in one crate. Start with the <a href={url('/architecture/')}>architecture overview</a>,
+      then follow the data from the game to the screen.
+    </p>
+    <div class="cards">
+      {TOUR.map((t) => (
+        <a class="card" href={url(`/code/${t.slug}/`)}><strong>{t.title}</strong><span>{t.blurb}</span></a>
+      ))}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>The code as a graph</h2>
+    <div class="box">
+      <div class="box-body">
+        <p style="margin-top:0">
+          A <a href="https://github.com/safishamsi/graphify">graphify</a> knowledge graph of the whole repository:
+          {GRAPH_META.nodes} nodes (functions, types, docs, screenshots) and {GRAPH_META.links} relationships,
+          grouped into {GRAPH_META.communities} communities. Switch between 2D and 3D, search for a symbol and jump
+          straight to its line on GitHub.
+        </p>
+        <a class="btn btn-primary" href={url('/graph/')}>Open the graph</a>
+        <a class="btn" href={url('/graph/?view=3d')}>Open in 3D</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Screenshots</h2>
+    <div class="gallery">
+      {shots.map(([f, c]) => (
+        <figure><img src={url(`/screenshots/${f}`)} alt={c} loading="lazy" /><figcaption>{c}</figcaption></figure>
+      ))}
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    MIT licensed · <a href={REPO}>zVSciy/Hoi4_IC_Graphs</a> · Not affiliated with Paradox Interactive
+  </footer>
+</Base>

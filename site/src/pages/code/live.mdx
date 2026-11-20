@@ -1,0 +1,52 @@
+---
+layout: ../../layouts/Docs.astro
+title: live
+description: Following output.txt while the game is still writing it.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `live`: following a growing file
+
+While a game runs, `output.txt` grows by a few lines per in-game day. <Src file="src/live.rs">src/live.rs</Src> watches it
+in a background thread and sends the UI a fresh `Dataset` whenever new data arrives, without re-parsing the whole file.
+
+<GraphLink files="src/live.rs" />
+
+## The monitor
+
+<Src file="src/live.rs" line={51}>LiveMonitor</Src> is a handle to a worker thread named `live-monitor`.
+<Src file="src/live.rs" line={61}>LiveMonitor::start</Src> takes the file path, a poll interval, an optional library sink and
+a callback that wakes the UI after each event.
+
+The UI talks to it through two channels:
+
+- **commands** to the worker: poll now (<Src file="src/live.rs" line={81}>poll_now</Src>) or stop;
+- **events** back to the UI (<Src file="src/live.rs" line={29}>LiveEvent</Src>): `Updated(Arc<Dataset>)`, a `Status`
+  message, or `Saved` when the file was stored in the game library.
+
+Dropping the handle sends `Stop` and joins the thread, so a monitor never outlives its window.
+
+## Reading only new bytes
+
+The private <Src file="src/live.rs" line={178}>Tail</Src> struct remembers how many bytes it has read and keeps its own
+`Accumulator`. <Src file="src/live.rs" line={200}>Tail::poll</Src>:
+
+1. checks the file's length and modification time and returns early if nothing changed;
+2. if the file **shrank** (the game started a new session), throws everything away and starts again;
+3. reads only the bytes after the saved offset;
+4. feeds everything up to the **last complete line** into the accumulator and buffers a half-written last line until its
+   newline arrives;
+5. returns a new `Dataset`.
+
+## Saving while you play
+
+With a <Src file="src/live.rs" line={38}>LibrarySink</Src>, the worker loop (<Src file="src/live.rs" line={100}>run</Src>)
+also stores the file in the [game library](../library/): whenever there is unsaved data and the sink's interval has passed,
+and once more when monitoring stops. Nothing has to be saved by hand, and a crash loses at most one interval.
+
+<Note title="Defaults">
+The poll interval (2 s) and the save interval (30 s) come from the user's [settings](../support/) and can be changed in
+the Settings window.
+</Note>

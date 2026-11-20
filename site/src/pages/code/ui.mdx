@@ -1,0 +1,71 @@
+---
+layout: ../../layouts/Docs.astro
+title: ui
+description: The egui front end, its windows and how work is kept off the UI thread.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `ui`: the egui front end
+
+The user interface is built with [egui](https://github.com/emilk/egui) through `eframe`. It is the largest module, and
+<Src file="src/ui/app.rs">app.rs</Src> (about 1,500 lines) is the most connected file in the code graph: the main window
+ties together every other module.
+
+<GraphLink files="src/ui/" />
+
+## Starting up
+
+<Src file="src/ui/mod.rs" line={17}>ui::run</Src> creates the native window, applies the dark theme
+(<Src file="src/ui/style.rs" line={17}>style::apply</Src>, colours from `theme`) and hands control to
+<Src file="src/ui/app.rs" line={164}>App</Src>. Files passed on the command line or through "Open with…" are preloaded as
+Data File 1 and 2.
+
+## One OS window per tool
+
+Every secondary window is a separate OS window, an egui **viewport**:
+
+| Window | File | Shows |
+| --- | --- | --- |
+| Main window | <Src file="src/ui/app.rs">app.rs</Src> | Data files, country picker, analysis buttons, game status, tools. |
+| Graph | <Src file="src/ui/graph_window.rs">graph_window.rs</Src> | One generated graph. A deferred viewport, so hovering a chart redraws nothing else. |
+| Live dashboard | <Src file="src/ui/live_dashboard.rs">live_dashboard.rs</Src> | Graphs that follow the file while the game writes it. |
+| Rankings | <Src file="src/ui/rankings_window.rs">rankings_window.rs</Src> | Every country on one date, ordered by output, with world share. |
+| Game library | <Src file="src/ui/library_window.rs">library_window.rs</Src> | Browse, filter, annotate and compare stored games. |
+| Settings | <Src file="src/ui/settings_window.rs">settings_window.rs</Src> | All options, including the DataCollection DLL manager. |
+
+Child windows never change app state directly. They return actions such as
+<Src file="src/ui/library_window.rs" line={12}>LibraryAction</Src> or
+<Src file="src/ui/settings_window.rs" line={27}>SettingsAction</Src>, and `App` applies them.
+
+## The main window
+
+A few `App` methods carry most of the behaviour:
+
+- <Src file="src/ui/app.rs" line={499}>pump_game_events</Src> drains `GameWatcher` events;
+  <Src file="src/ui/app.rs" line={524}>on_game_started</Src> picks the DLL version, schedules injection after the configured
+  delay and starts the live dashboard.
+- <Src file="src/ui/app.rs" line={698}>generate</Src> builds a graph for the selected countries or groups from one or both
+  data files and opens a graph window.
+- <Src file="src/ui/app.rs" line={933}>compare_library</Src> does the same for any number of saved games, optionally
+  aligned by days since start.
+
+<Note title="Keeping the UI responsive">
+Parsing and saving never run on the UI thread. <Src file="src/ui/app.rs" line={334}>App::spawn</Src> runs work on a
+background thread and <Src file="src/ui/app.rs" line={346}>poll_tasks</Src> picks up the results on a later frame. The
+live monitor and game watcher wake the UI with a repaint request when they have news.
+</Note>
+
+## Charts
+
+- <Src file="src/ui/chart_panel.rs" line={17}>ChartPanel</Src> is shared by graph windows and the live dashboard: tabs for
+  Military / Naval / Civilian, smoothing, the Values / Share % toggle and the export buttons.
+- <Src file="src/ui/chart.rs" line={22}>PreparedChart</Src> precomputes what to draw (smoothing, shares, hidden series)
+  so redraws are cheap, and <Src file="src/ui/chart.rs" line={75}>chart::show</Src> draws the daily chart on top and the
+  cumulative chart below with `egui_plot`, plus a clickable legend.
+
+## Rankings
+
+<Src file="src/ui/rankings_window.rs" line={236}>rank</Src> lists every country with a positive value on a given day,
+largest first, either on that day, as a running total, or as an average over the last N days.

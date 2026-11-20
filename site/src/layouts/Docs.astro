@@ -1,0 +1,43 @@
+---
+import Base from './Base.astro';
+import { url, TOUR, GRAPH_META, COMMIT, TREE_URL } from '../site';
+interface Props {
+  frontmatter?: { title: string; description?: string };
+}
+const fm = Astro.props.frontmatter ?? { title: '' };
+const path = Astro.url.pathname.replace(/\/$/, '');
+const here = (p: string) => (path === url(p).replace(/\/$/, '') ? 'page' : undefined);
+const active = path.includes('/code/') ? 'code' : 'architecture';
+const idx = TOUR.findIndex((t) => path.endsWith(`/code/${t.slug}`));
+const prev = idx > 0 ? TOUR[idx - 1] : idx === 0 ? { slug: '', title: 'Architecture' } : null;
+const next = idx >= 0 && idx < TOUR.length - 1 ? TOUR[idx + 1] : idx === -1 ? TOUR[0] : null;
+const hrefOf = (slug: string) => (slug ? url(`/code/${slug}/`) : url('/architecture/'));
+---
+<Base title={fm.title} description={fm.description} active={active}>
+  <div class="docs">
+    <aside class="sidebar">
+      <h4>Start here</h4>
+      <a href={url('/')}>Overview</a>
+      <a href={url('/architecture/')} aria-current={here('/architecture/')}>Architecture</a>
+      <h4>Code tour</h4>
+      {TOUR.map((t) => (
+        <a href={url(`/code/${t.slug}/`)} aria-current={here(`/code/${t.slug}/`)} title={t.blurb}>{t.title}</a>
+      ))}
+      <h4>Explore</h4>
+      <a href={url('/graph/')}>Knowledge graph</a>
+    </aside>
+    <main class="content">
+      <article class="markdown-body">
+        <slot />
+      </article>
+      <div class="page-meta">
+        <span>{prev && <a href={hrefOf(prev.slug)}>← {prev.title}</a>}</span>
+        <span>
+          Code links point at commit <a href={TREE_URL} target="_blank" rel="noopener"><code>{COMMIT.slice(0, 7)}</code></a>
+          · graph snapshot: {GRAPH_META.nodes} nodes, {GRAPH_META.links} links
+        </span>
+        <span>{next && <a href={hrefOf(next.slug)}>{next.title} →</a>}</span>
+      </div>
+    </main>
+  </div>
+</Base>

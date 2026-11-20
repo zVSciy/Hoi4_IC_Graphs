@@ -1,0 +1,26 @@
+---
+layout: ../../layouts/Docs.astro
+title: export
+description: Saving graphs as interactive HTML, CSV or PNG.
+---
+import Src from '../../components/Src.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `export`: graphs leave the app
+
+`src/export/` writes the same `GraphData` that the native charts show, in three formats. The export buttons live in every
+chart panel.
+
+<GraphLink files="src/export/" />
+
+| Format | Code | Result |
+| --- | --- | --- |
+| HTML | <Src file="src/export/html.rs" line={19}>html::render</Src> | A standalone interactive page using Plotly.js from its CDN: a tab per metric, daily IC on top, cumulative below, shared date axis, dark theme. |
+| CSV | <Src file="src/export/csv.rs" line={9}>csv::render</Src> | Long format, one row per date, series and metric, ready for pivot tables in Excel, LibreOffice or pandas. |
+| PNG | <Src file="src/export/mod.rs" line={14}>save_png</Src> | A screenshot of the chart area, cropped from the window. |
+
+**Open in Browser** uses <Src file="src/export/mod.rs" line={50}>open_in_browser</Src>: it writes the HTML to a fresh file
+in the temp folder and opens it with the default browser.
+
+The HTML export takes its colours from the same <Src file="src/theme.rs">theme</Src> module as the native UI, so an exported
+page looks like the app. Series hidden in the chart stay hidden in the export.

@@ -1,0 +1,69 @@
+---
+layout: ../../layouts/Docs.astro
+title: library
+description: The SQLite game library and its compact binary codec.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `library`: every campaign, saved
+
+The game library keeps every loaded or live-monitored output file, already parsed, in a SQLite database
+(`library.sqlite3` in the app data folder). Old campaigns open instantly and can be compared without the original
+`output.txt`.
+
+<GraphLink files="src/library/" />
+
+## Files
+
+| File | What it does |
+| --- | --- |
+| <Src file="src/library/mod.rs">mod.rs</Src> | The `Library` type: open, save, list, load, edit, delete, export / import. |
+| <Src file="src/library/codec.rs">codec.rs</Src> | Compact binary encoding of a `Dataset`. |
+
+## A game is identified by its content
+
+The key idea is in <Src file="src/library/mod.rs" line={365}>Library::save_file</Src>. A game is identified by a 128-bit
+xxHash <Src file="src/library/mod.rs" line={609}>fingerprint</Src> of the file's bytes, not by its path:
+
+- saving an identical file changes nothing (`Unchanged`);
+- saving a file that **extends** a stored game, meaning the same campaign played further (`output.txt` only ever grows),
+  updates that game in place (`Updated`);
+- anything else becomes a new game (`Added`).
+
+See <Src file="src/library/mod.rs" line={174}>SaveOutcome</Src>. To detect "extends", `save_file` looks up games from the
+same path and checks, while the file is being parsed, whether a stored game's fingerprint matches a prefix of the new
+file. That uses `data::load_file_with`, so hashing and parsing happen in one pass over the memory-mapped file.
+
+<Note title="Concurrency">
+The duplicate check and the write happen inside one `IMMEDIATE` SQLite transaction, so saves from other threads (the live
+monitor) or a second app instance cannot slip in between.
+</Note>
+
+## The rest of the API
+
+| Method | Purpose |
+| --- | --- |
+| <Src file="src/library/mod.rs" line={208}>open</Src> | Opens or creates the database and migrates its schema. |
+| <Src file="src/library/mod.rs" line={293}>games</Src> | Lists games with their metadata (<Src file="src/library/mod.rs" line={85}>GameMeta</Src>) and a precomputed <Src file="src/library/mod.rs" line={108}>Summary</Src>. |
+| <Src file="src/library/mod.rs" line={335}>load</Src> | Decodes a stored game back into a `Dataset`. |
+| <Src file="src/library/mod.rs" line={496}>export_game</Src> / <Src file="src/library/mod.rs" line={537}>import_game</Src> | Single-game `.hoi4game` files for sharing. |
+
+## The codec
+
+<Src file="src/library/codec.rs">codec.rs</Src> stores a `Dataset` as one zstd-compressed blob:
+
+```text
+magic "HOI4DS\0" + format byte
+u32 dates, u32 tags, u32 metrics
+u64 lines, u64 valid
+i32 × dates     first date, then day-to-day deltas (almost all 1)
+u64 × tags      packed country tags
+f64 × metrics × tags × dates, byte-planar
+```
+
+Before compression, every value is XORed with the same country's value on the previous day, so unchanged days become
+zero, and the bytes are split into eight planes so that similar sign and exponent bytes end up next to each other. Both
+steps are exactly reversible: <Src file="src/library/codec.rs" line={103}>decode</Src> is bit-identical to what
+<Src file="src/library/codec.rs" line={53}>encode</Src> received, and zstd shrinks a typical campaign several times over.

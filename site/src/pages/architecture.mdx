@@ -1,0 +1,99 @@
+---
+layout: ../layouts/Docs.astro
+title: Architecture
+description: How HOI4 IC Analyzer is put together, from the injected DLL to the charts.
+---
+import Src from '../components/Src.astro';
+import Note from '../components/Note.astro';
+
+# Architecture
+
+HOI4 IC Analyzer is a single Rust crate: a library (<Src file="src/lib.rs">src/lib.rs</Src>) holding all the logic and a small
+binary (<Src file="src/main.rs">src/main.rs</Src>) that starts the egui user interface. It targets Windows only, and all direct Win32 calls
+sit behind `#[cfg(windows)]`.
+
+## The big picture
+
+Data flows one way, from the game to the screen:
+
+<div class="pipeline">
+  <div class="stage"><b>1. Collect</b><code>inject</code> loads the DataCollection DLL into <code>hoi4.exe</code>; the DLL writes <code>output.txt</code></div>
+  <div class="arrow">→</div>
+  <div class="stage"><b>2. Parse</b><code>data::parser</code> + <code>data::accumulator</code> build a countries × days grid</div>
+  <div class="arrow">→</div>
+  <div class="stage"><b>3. Store</b><code>library</code> (SQLite + <code>codec</code>) and <code>live</code> (growing file)</div>
+  <div class="arrow">→</div>
+  <div class="stage"><b>4. Analyse</b><code>analysis</code> turns datasets into daily and cumulative series</div>
+  <div class="arrow">→</div>
+  <div class="stage"><b>5. Show</b><code>ui</code> (egui windows) and <code>export</code> (HTML, CSV, PNG)</div>
+</div>
+
+```text
+ HOI4 (Windows)                         HOI4 IC Analyzer
+┌──────────────────────┐   output.txt   ┌───────────────────────────────────────────────┐
+│ hoi4.exe             │ ─────────────► │ data::parser → data::accumulator → Dataset    │
+│  └ DataCollection DLL│  one line per  │        │                         │            │
+└──────────────────────┘  country/day   │        ▼                         ▼            │
+          ▲                             │ live (follows the file)   library (SQLite)    │
+          │ inject::inject (Windows)    │        │                         │            │
+          └──────────────────────────── │        └──────────► analysis ◄───┘            │
+                                        │                        │                      │
+                                        │            ui (egui)   ▼   export (HTML/CSV)  │
+                                        └───────────────────────────────────────────────┘
+```
+
+1. **Collect (Windows only).** [`inject`](../code/inject/) finds `hoi4.exe`, picks the DataCollection DLL made for the running
+   game version and loads it into the game with `LoadLibraryW`. The DLL appends one line per country per day, e.g.
+   `DLL: 12:00, 1 January, 1936 GER MIL 12 34.50` (time, date, tag, metric, units, IC), to `output.txt` in the game folder.
+2. **Parse.** [`data::parser`](../code/data/) is a hand-written single-pass parser with no regex and no allocation per line.
+   `data::accumulator` sums the records into a grid of countries × days, and `data::Dataset` is the immutable result.
+3. **Store.** [`library`](../code/library/) keeps every dataset in a SQLite database, compressed with the binary format in
+   `library::codec`, so old games open without re-parsing. [`live`](../code/live/) follows a file that is still being
+   written and only reads the new bytes.
+4. **Analyse.** [`analysis`](../code/analysis/) turns one or more datasets into daily and cumulative series per country or
+   per group (`analysis::factions`: Axis / Allies or user-defined groups, names and stable colours).
+5. **Show.** [`ui`](../code/ui/) is the egui front end; every graph, rankings, library and settings window is its own OS
+   window (an egui viewport). [`export`](../code/export/) writes the same series as interactive HTML (Plotly), CSV or PNG.
+
+## Modules
+
+| Module | Responsibility |
+| --- | --- |
+| `main.rs` | Entry point: logger, crash dialog, command-line files, starts the UI. |
+| [`analysis`](../code/analysis/) | Datasets → plottable series; `factions` for groups, labels and stable colours. |
+| [`countries`](../code/game-and-countries/) | Built-in English country names, one per tag (a generated table, sorted by tag). |
+| [`data`](../code/data/) | The output-file format: `parser`, `accumulator`, `dataset`, `date` (days as integers), `tag` (tags packed in a `u64`). |
+| [`export`](../code/export/) | CSV, standalone HTML and PNG export. |
+| [`game`](../code/game-and-countries/) | The HOI4 install: Steam library lookup, game version, country names, `GameWatcher` for game start / exit. |
+| [`inject`](../code/inject/) | DLL catalogue (user-added, next to the executable, embedded) and injection; `win` holds the Win32 code. |
+| [`library`](../code/library/) | SQLite game library and its binary `codec`. |
+| [`live`](../code/live/) | Incremental reading of a growing file. |
+| [`logging`](../code/support/) | Logger for stderr and the in-app log viewer. |
+| [`paths`](../code/support/) | The app's data folder (`%LOCALAPPDATA%\HOI4_Analyzer`). |
+| [`settings`](../code/support/) | User settings, stored as JSON. |
+| [`theme`](../code/support/) | Colours shared by the native UI and the HTML export. |
+| [`ui`](../code/ui/) | The windows: `app`, `graph_window`, `chart_panel` / `chart`, `live_dashboard`, `rankings_window`, `library_window`, `settings_window`, `dialogs`, `style`. |
+| [`update`](../code/support/) | Release check against the GitHub API (release builds only, notice only). |
+
+## How a game day reaches the screen
+
+Here is the fully automatic path, from launching HOI4 to a live chart:
+
+1. `game::GameWatcher` checks every 2 seconds whether `hoi4.exe` is running and reports `Started` / `Exited` events to the main window.
+2. On `Started`, the main window (`ui::app`) reads the game's version, picks the matching DataCollection DLL with
+   `inject::match_game_version` and, after the configured delay, calls `inject::inject`.
+3. The DLL starts appending lines to `output.txt`. `live::LiveMonitor` polls the file, feeds only the new bytes into an
+   `Accumulator` and sends a fresh `Dataset` to the UI.
+4. The live dashboard rebuilds its series with `analysis::build` and redraws the chart.
+5. While data keeps arriving, the monitor stores the file in the game library at a fixed interval, and once more when monitoring stops.
+
+<Note title="Design rule">
+No panics on user data. Malformed lines are counted and skipped, and unreadable files produce a message in the UI.
+User-facing text is plain English and tells the user what to do next.
+</Note>
+
+## Conventions
+
+- `cargo fmt` formatting, `cargo clippy --all-targets -- -D warnings` clean.
+- Unit tests live next to the code (`#[cfg(test)] mod tests`); the parser has a Criterion benchmark in `benches/parse.rs`.
+- Dependencies are small, pure-Rust crates where possible.

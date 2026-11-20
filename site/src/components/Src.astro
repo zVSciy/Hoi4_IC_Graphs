@@ -1,0 +1,11 @@
+---
+// Inline link to source on GitHub: <Src file="src/data/parser.rs" line={85}>parse_line</Src>
+import { srcUrl } from '../site';
+interface Props {
+  file: string;
+  line?: number;
+}
+const { file, line } = Astro.props;
+const fallback = line ? `${file.split('/').pop()}:${line}` : file;
+---
+<a class="src" href={srcUrl(file, line)} target="_blank" rel="noopener"><code><slot>{fallback}</slot></code></a>

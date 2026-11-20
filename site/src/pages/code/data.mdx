@@ -1,0 +1,86 @@
+---
+layout: ../../layouts/Docs.astro
+title: data
+description: How output.txt is parsed into a countries × days grid.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `data`: from text lines to a grid
+
+`src/data/` reads the files the DataCollection DLL writes and turns them into a `Dataset`: one row per country, one
+column per day, a value for each metric. Everything else in the app works on `Dataset`s.
+
+<GraphLink files="src/data/" />
+
+## The input format
+
+Each line the DLL appends looks like this:
+
+```text
+DLL: 12:00, 1 January, 1936 GER MIL 12 34.50
+     time   date             tag type units IC
+```
+
+`MIL`, `NAV` and (newer DataCollection versions) `CIV` are the three charted metrics, see the
+<Src file="src/data/mod.rs" line={20}>Metric</Src> enum. Lines without a country tag are rejected.
+
+## Files
+
+| File | What it does |
+| --- | --- |
+| <Src file="src/data/parser.rs">parser.rs</Src> | Parses one line into a `Record` (tag, day, metric, value). |
+| <Src file="src/data/accumulator.rs">accumulator.rs</Src> | Sums records into the countries × days grid, in parallel for large files. |
+| <Src file="src/data/dataset.rs">dataset.rs</Src> | The immutable result, with lookups by tag and metric. |
+| <Src file="src/data/date.rs">date.rs</Src> | `Day`: a date as the number of days since 1970-01-01. |
+| <Src file="src/data/tag.rs">tag.rs</Src> | `Tag`: a country tag like `GER` packed into a `u64`. |
+| <Src file="src/data/mod.rs">mod.rs</Src> | `Metric` and the entry points `load_file` / `load_file_with`. |
+
+## The parser
+
+<Src file="src/data/parser.rs" line={85}>parse_line</Src> is hand-written: a single forward scan over the bytes of a line,
+with no regex engine and no allocations. It accepts exactly what the original tool's regular expression accepted, and
+returns `None` for anything else. <Src file="src/data/parser.rs" line={178}>is_blank</Src> lets the accumulator skip empty
+lines without counting them as errors.
+
+## Small types that make it fast
+
+- <Src file="src/data/date.rs" line={10}>Day</Src> stores a date as an `i32` day number. Dates are parsed once and then
+  compared, sorted, hashed and plotted as integers, with no string keys. Month names are matched by
+  <Src file="src/data/date.rs" line={63}>parse_month</Src>.
+- <Src file="src/data/tag.rs" line={9}>Tag</Src> packs up to eight ASCII bytes left-aligned into a `u64`, so comparing or
+  hashing a tag is a single integer operation and integer order equals alphabetical order.
+
+## The accumulator
+
+<Src file="src/data/accumulator.rs" line={46}>Accumulator</Src> keeps a grid of cells. Rows (countries) and columns (days) are
+assigned in order of first appearance through small lookup maps. A game has about 100 countries and a few thousand days,
+so the maps stay in the CPU cache. Lines arrive grouped by date, so a one-entry cache resolves the column for almost every line.
+
+<Src file="src/data/accumulator.rs" line={84}>ingest</Src> picks a strategy by size:
+
+- under 1 MiB it parses sequentially, splitting lines with `memchr`;
+- above that it splits the input at line boundaries, parses the chunks on all cores with `rayon`, and
+  <Src file="src/data/accumulator.rs" line={174}>merge</Src>s the worker grids by remapping their rows and columns.
+
+The same type backs [live](../live/) parsing, where only newly appended bytes are fed in.
+<Src file="src/data/accumulator.rs" line={191}>to_dataset</Src> produces the finished `Dataset`, and
+<Src file="src/data/accumulator.rs" line={25}>ParseStats</Src> counts total, valid and error lines.
+
+## Loading a file
+
+<Src file="src/data/mod.rs" line={62}>load_file</Src> memory-maps the file and runs the accumulator over it.
+<Src file="src/data/mod.rs" line={68}>load_file_with</Src> does the same while running a second function over the mapped
+bytes in parallel; the [library](../library/) uses it to fingerprint the file while it is being parsed.
+
+<Note title="Performance">
+A full 1936–1945 campaign log (43 MB) parses in about 20 ms. The parser has a Criterion benchmark
+(<Src file="benches/parse.rs">benches/parse.rs</Src>) and the contributing guide asks for it to be run on parser changes.
+</Note>
+
+## The result
+
+<Src file="src/data/dataset.rs" line={7}>Dataset</Src> is immutable and shared behind `Arc` across windows. It stores one
+dense matrix per metric; <Src file="src/data/dataset.rs" line={63}>row</Src> returns one country's values for one metric and
+<Src file="src/data/dataset.rs" line={86}>latest_total</Src> sums the last day across countries.

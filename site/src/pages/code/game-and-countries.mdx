@@ -1,0 +1,44 @@
+---
+layout: ../../layouts/Docs.astro
+title: game & countries
+description: Finding the HOI4 install, reading its version, naming countries and watching the game process.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# `game` and `countries`: knowing about HOI4
+
+<Src file="src/game.rs">src/game.rs</Src> knows about the Hearts of Iron IV installation: where it is, which version it
+is, what the countries are called, and whether it is running. <Src file="src/countries.rs">src/countries.rs</Src> holds the
+built-in country names.
+
+<GraphLink files="src/game.rs" />
+
+## Finding the game
+
+<Src file="src/game.rs" line={18}>install_dir</Src> finds HOI4 through Steam: it reads Steam's `libraryfolders.vdf` and
+checks each library folder for the game. <Src file="src/game.rs" line={52}>version</Src> reads the version the launcher
+reports, which [inject](../inject/) uses to pick the matching DataCollection DLL.
+
+## Watching for the game
+
+<Src file="src/game.rs" line={183}>GameWatcher</Src> runs a background thread that checks every 2 seconds whether
+`hoi4.exe` is running and reports <Src file="src/game.rs" line={177}>GameEvent</Src>s: `Started(RunningGame)` or `Exited`.
+<Src file="src/game.rs" line={168}>RunningGame</Src> records whether the game was already running when watching started. In
+that case it has finished loading, so injection needs no start-up delay.
+
+## Country names
+
+<Src file="src/game.rs" line={63}>CountryNames</Src> maps tags to display names:
+
+1. <Src file="src/game.rs" line={77}>CountryNames::builtin</Src> starts from the built-in table,
+   <Src file="src/countries.rs" line={8}>COUNTRY_NAMES</Src>: English names for 328 tags, sorted by tag.
+2. <Src file="src/game.rs" line={89}>CountryNames::load</Src> adds names from the game's
+   `localisation/english/countries_l_english.yml`, but **only for tags the built-in table doesn't have** (mods, dynamic tags).
+
+<Note title="Why built-in names win">
+The built-in table gives every country one stable, recognisable name ("German Reich", "Soviet Union") on every machine,
+even without HOI4 installed. The game's names only fill the gaps. A unit test checks that the table stays sorted, unique
+and valid.
+</Note>

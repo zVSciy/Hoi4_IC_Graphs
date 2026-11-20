@@ -14,6 +14,8 @@ All notable changes to this project are documented here. The format is based on
   game's localisation.
 - Public source code under the MIT License, with documentation (build guide, architecture,
   contributing guide, security policy) and CI for every push and pull request.
+- Project website (`site/`, published to GitHub Pages): a tour of the source code and an
+  interactive 2D / 3D graph of the code base, in GitHub's dark colours.
 
 ### Changed
 

@@ -1,0 +1,58 @@
+---
+layout: ../../layouts/Docs.astro
+title: build & release
+description: build.rs, Cargo features, CI and the tag-triggered release workflow.
+---
+import Src from '../../components/Src.astro';
+import Note from '../../components/Note.astro';
+import GraphLink from '../../components/GraphLink.astro';
+
+# Build and release
+
+<GraphLink files="build.rs" />
+
+## `build.rs`
+
+The <Src file="build.rs">build script</Src> does two things before the crate compiles:
+
+1. **Embeds the DLLs.** <Src file="build.rs" line={44}>embed_dlls</Src> reads every DLL in `DataCollection/` (and
+   `AdminMenu/` with the `admin-menu` feature), compresses it with zstd and generates the table that
+   [`inject::embedded`](../inject/) includes. The compression level comes from
+   <Src file="build.rs" line={110}>zstd_level</Src> and can be set with `HOI4_DLL_ZSTD_LEVEL`.
+2. **Embeds the icon and version info** into the Windows executable (`winresource`).
+
+## Cargo features
+
+| Feature | Default | Effect |
+| --- | --- | --- |
+| `embed-dlls` | on | Compile the DataCollection DLLs into the executable. Without it (`--no-default-features`) the app only uses DLLs from folders. |
+| `admin-menu` | off | Also embed the maintainer-only AdminMenu DLL. |
+
+## CI
+
+<Src file=".github/workflows/ci.yml">ci.yml</Src> runs on every push to `main` and every pull request, on Windows:
+`cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `cargo test`. The release workflow calls the same
+workflow first, so nothing is released that fails these checks.
+
+## Releases
+
+<Src file=".github/workflows/release.yml">release.yml</Src> runs when a `v*` tag is pushed:
+
+1. run the CI checks;
+2. check the tag (`vX.Y.Z` or a pre-release); if it doesn't match the `Cargo.toml` version, that is only a warning;
+3. build the release executable with `HOI4_ANALYZER_RELEASE` set to the tag, which is what
+   [`update::current_release`](../support/) reads;
+4. sign the executable (self-signed);
+5. package `HOI4_Analyzer-<version>-windows-x64.zip`, write SHA-256 checksums and release notes;
+6. publish the GitHub release.
+
+<Note title="Release profile">
+Release builds use fat LTO and a single codegen unit, and abort on panic. `main.rs` installs a panic hook so a crash still
+shows a message box. The toolchain is pinned in <Src file="rust-toolchain.toml">rust-toolchain.toml</Src>.
+</Note>
+
+## This website
+
+This site lives in `site/` and is built with Astro by `.github/workflows/pages.yml` whenever something under `site/`
+changes on `main`. The graph is a committed snapshot of the graphify output: after rebuilding the graph, run
+`npm run sync-graph` in `site/` and commit the result.

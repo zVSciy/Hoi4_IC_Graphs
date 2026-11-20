@@ -1,0 +1,134 @@
+---
+import Base from '../layouts/Base.astro';
+import { GRAPH_META, COMMIT, TREE_URL } from '../site';
+---
+<Base title="Knowledge graph" active="graph" description="Interactive 2D / 3D knowledge graph of the HOI4 IC Analyzer source code, built with graphify.">
+  <div class="gv">
+    <div class="gv-toolbar">
+      <div class="segmented" role="group" aria-label="View">
+        <button type="button" data-view="2d" aria-pressed="true">2D</button>
+        <button type="button" data-view="3d" aria-pressed="false">3D</button>
+      </div>
+      <div class="gv-search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>
+        <input id="gv-search" type="search" placeholder="Search nodes (type, then Enter)" autocomplete="off" spellcheck="false" />
+        <ul id="gv-results" class="gv-results" hidden></ul>
+      </div>
+      <button type="button" class="btn btn-sm" id="gv-reset">Reset view</button>
+      <span class="gv-stats" id="gv-stats"></span>
+      <span class="gv-spacer"></span>
+      <span class="gv-meta">
+        graphify snapshot · {GRAPH_META.communities} communities ·
+        commit <a href={TREE_URL} target="_blank" rel="noopener"><code>{COMMIT.slice(0, 7)}</code></a>
+      </span>
+    </div>
+    <div class="gv-filter" id="gv-filter" hidden>
+      Showing only files under <code id="gv-filter-path"></code>
+      <button type="button" class="btn btn-sm" id="gv-filter-clear">Clear filter</button>
+    </div>
+    <div class="gv-body">
+      <aside class="gv-legend">
+        <div class="gv-legend-head">
+          <span>Communities</span>
+          <span>
+            <button type="button" class="linkish" id="gv-all">all</button> ·
+            <button type="button" class="linkish" id="gv-none">none</button>
+          </span>
+        </div>
+        <ul id="gv-legend"></ul>
+        <div class="gv-key">
+          <div><i class="ln ex"></i> extracted from code</div>
+          <div><i class="ln inf"></i> inferred by graphify</div>
+          <div><i class="ln amb"></i> ambiguous</div>
+          <p>Node size = number of connections. Click a node for details, click empty space to clear.</p>
+        </div>
+      </aside>
+      <div class="gv-canvas" id="gv-canvas">
+        <div class="gv-loading" id="gv-loading">Loading graph…</div>
+      </div>
+      <aside class="gv-details" id="gv-details" hidden></aside>
+    </div>
+  </div>
+</Base>
+
+<style is:global>
+  body:has(.gv) { overflow: hidden; }
+  .gv { height: calc(100vh - var(--header-h)); display: flex; flex-direction: column; }
+  .gv-toolbar {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border-muted); background: var(--canvas);
+  }
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .segmented button {
+    font: 600 13px/20px var(--font); padding: 4px 16px; border: 0; cursor: pointer;
+    background: var(--canvas-subtle); color: var(--fg-muted);
+  }
+  .segmented button + button { border-left: 1px solid var(--border); }
+  .segmented button[aria-pressed="true"] { background: var(--canvas); color: var(--fg); box-shadow: inset 0 -2px 0 #f78166; }
+  .gv-search { position: relative; display: flex; align-items: center; gap: 6px; color: var(--fg-muted);
+    background: var(--canvas-inset); border: 1px solid var(--border); border-radius: 6px; padding: 0 8px; width: 320px; }
+  .gv-search:focus-within { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .gv-search input { flex: 1; background: transparent; border: 0; outline: 0; color: var(--fg); font: 14px/30px var(--font); }
+  .gv-results {
+    position: absolute; top: 36px; left: -1px; right: -1px; z-index: 30; margin: 0; padding: 4px 0; list-style: none;
+    background: var(--canvas-overlay); border: 1px solid var(--border); border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(1, 4, 9, 0.75); max-height: 320px; overflow-y: auto;
+  }
+  .gv-results li { padding: 6px 12px; cursor: pointer; color: var(--fg); display: flex; gap: 8px; align-items: center; }
+  .gv-results li small { color: var(--fg-muted); margin-left: auto; font-family: var(--mono); font-size: 11px; }
+  .gv-results li:hover, .gv-results li.active { background: var(--accent); }
+  .gv-results li:hover small, .gv-results li.active small { color: #fff; }
+  .gv-stats, .gv-meta { color: var(--fg-muted); font-size: 12px; }
+  .gv-spacer { flex: 1; }
+  .gv-filter {
+    display: flex; align-items: center; gap: 10px; padding: 8px 16px; font-size: 13px;
+    background: var(--accent-subtle); border-bottom: 1px solid rgba(56, 139, 253, 0.4);
+  }
+  .gv-filter[hidden] { display: none; }
+  .gv-body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .gv-legend { width: 260px; flex: none; overflow-y: auto; border-right: 1px solid var(--border-muted); padding: 12px; font-size: 13px; }
+  .gv-legend-head { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
+  .linkish { background: none; border: 0; color: var(--link); cursor: pointer; font: inherit; padding: 0; font-weight: 400; }
+  #gv-legend { list-style: none; margin: 0; padding: 0; }
+  #gv-legend li { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+  #gv-legend li:hover { background: var(--neutral-muted); }
+  #gv-legend li.off { opacity: 0.4; }
+  #gv-legend li.empty { display: none; }
+  .sw { width: 10px; height: 10px; border-radius: 50%; flex: none; display: inline-block; }
+  #gv-legend .cnt { margin-left: auto; color: var(--fg-muted); font-size: 12px; }
+  .gv-key { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-muted); color: var(--fg-muted); font-size: 12px; }
+  .gv-key div { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .gv-key p { margin: 8px 0 0; }
+  .ln { display: inline-block; width: 18px; height: 2px; }
+  .ln.ex { background: #6e7681; } .ln.inf { background: #d29922; } .ln.amb { background: #f85149; }
+  .gv-canvas { flex: 1; position: relative; min-width: 0; background: var(--canvas); overflow: hidden; }
+  .gv-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-muted); z-index: 2; background: var(--canvas); }
+  .gv-loading[hidden] { display: none; }
+  .gv-details { width: 340px; flex: none; overflow-y: auto; border-left: 1px solid var(--border-muted); padding: 16px; font-size: 13px; }
+  .gv-details[hidden] { display: none; }
+  .gv-details h3 { margin: 0 0 4px; font-size: 16px; word-break: break-word; }
+  .gv-details .row { margin: 8px 0; color: var(--fg-muted); }
+  .gv-details .row b { color: var(--fg); font-weight: 600; }
+  .gv-details code { font: 12px var(--mono); word-break: break-all; }
+  .gv-details ul { list-style: none; padding: 0; margin: 8px 0 0; }
+  .gv-details li { padding: 3px 0; display: flex; gap: 6px; align-items: baseline; }
+  .gv-details li .rel { color: var(--fg-muted); font-size: 11px; font-family: var(--mono); flex: none; }
+  .gv-details li button { background: none; border: 0; padding: 0; color: var(--link); cursor: pointer; font: inherit; text-align: left; word-break: break-word; }
+  .gv-details .close { float: right; }
+  .float-tooltip-kap, .scene-tooltip {
+    background: var(--canvas-overlay) !important; color: var(--fg) !important;
+    border: 1px solid var(--border); border-radius: 6px !important; padding: 6px 10px !important;
+    font: 12px/1.4 var(--font) !important; box-shadow: 0 8px 24px rgba(1, 4, 9, 0.75);
+  }
+  .float-tooltip-kap small, .scene-tooltip small { color: var(--fg-muted); font-family: var(--mono); }
+  @media (max-width: 1000px) {
+    .gv-legend, .gv-meta { display: none; }
+    .gv-search { width: auto; flex: 1; }
+    .gv-details { position: absolute; right: 0; top: 0; bottom: 0; background: var(--canvas); z-index: 25; }
+  }
+</style>
+
+<script>
+  import { startViewer } from '../scripts/graph-viewer';
+  startViewer();
+</script>
